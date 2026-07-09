@@ -1,0 +1,34 @@
+1. Add real backend and persistence
+Build a Node/Express or Firebase backend
+Store users, wishes, events, profile, and weather preferences in a database
+Replace localStorage with authenticated API calls
+2. Improve authentication
+Add real registration/login with JWT or sessions
+Support password hashing and email validation
+Add “remember me” and logout everywhere
+3. Enhance calendar/task workflow
+Add task priorities, categories, and reminders
+Show a daily agenda or week view
+Add drag-and-drop event scheduling
+Send in-app or email notifications for due-soon/overdue tasks
+4. Upgrade weather integration
+Use a real weather API consistently with better visuals
+Show forecast, sunrise/sunset, weather icons, and location history
+Change page background dynamically based on current weather
+5. Improve UI/UX
+Add smoother animations and transitions
+Improve responsive layout for mobile and tablet
+Add richer graphics or illustrations for each page
+Add a polished onboarding or tutorial for first-time users
+6. Add progress and gamification
+Add badges, streaks, or milestones for completed wishes
+Add progress charts, goal meters, and completion celebrations
+Show a “today’s wins” or “weekly progress” dashboard
+7. Add testing and quality
+Add unit tests for components and utilities
+Add integration tests for pages and flows
+Add linting and formatting rules for consistency
+8. Deploy and productionize
+Host on Vercel, Netlify, or Azure Static Web Apps
+Add environment config for API keys and theme defaults
+Add analytics or usage tracking
