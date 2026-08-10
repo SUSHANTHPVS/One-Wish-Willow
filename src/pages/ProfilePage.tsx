@@ -212,7 +212,6 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfilePicturePreview(reader.result as string);
-        setProfilePicture(file);
         handleProfilePictureUpload(file);
       };
       reader.readAsDataURL(file);
@@ -223,25 +222,9 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
     try {
       setIsUploadingPicture(true);
       setError(null);
-
-      const formData = new FormData();
-      formData.append('profilePicture', file);
-
-      const response = await fetch('/api/profile/picture', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to upload profile picture');
-      }
-
-      const data = await response.json();
-      setProfilePicture(data.profilePicture);
+      const data = (await apiUploadProfilePicture(token, file)) as { profilePicture?: string };
+      setProfilePicture(data.profilePicture ?? null);
+      setProfilePicturePreview(data.profilePicture ?? null);
       setSuccessMessage('Profile picture updated successfully!');
     } catch (err) {
       setError((err as Error).message);
