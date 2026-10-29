@@ -95,6 +95,11 @@ button {
   display: grid;
   place-items: center;
   padding: 32px;
+  background-color: #182b36;
+  background-image: url('/auth-background.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 .auth-container {
