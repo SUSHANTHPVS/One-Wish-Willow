@@ -123,13 +123,46 @@ button {
   gap: 18px;
 }
 
+.login-screen-scenic {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  padding: 0;
+  background-image: none;
+}
+
+.login-screen-scenic::before {
+  content: '';
+  width: 100%;
+  min-height: 100vh;
+  align-self: stretch;
+  background: url('/auth-background.png') center / cover no-repeat;
+}
+
 .login-card-landscape {
-  width: min(680px, 100%);
+  grid-column: 2;
+  width: calc(100% - 48px);
+  margin: 24px;
   background: #160d24;
 }
 
 body.theme-light .login-card-landscape {
   background: #fff7e0;
+}
+
+@media (max-width: 900px) {
+  .login-screen-scenic {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-screen-scenic::before {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+
+  .login-card-landscape {
+    grid-column: 1;
+    width: min(680px, calc(100% - 32px));
+    margin: 24px 16px;
+  }
 }
 
 .login-card label {
