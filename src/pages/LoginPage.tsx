@@ -31,7 +31,7 @@ export default function LoginPage({ onLogin, onSwitchToRegister, onSwitchToAdmin
   }
 
   return (
-    <main className="login-screen login-screen-scenic">
+    <main className="login-screen">
       <form className="login-card login-card-landscape" onSubmit={handleSubmit}>
         <div className="login-brand">
           <span>One Wish Willow</span>
