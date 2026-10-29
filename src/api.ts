@@ -23,6 +23,10 @@ async function request(path: string, method = 'GET', body?: object, token?: stri
     throw new Error((data as any).message || 'Server error');
   }
 
+  if (method !== 'GET' && token) {
+    window.dispatchEvent(new Event('one-wish-data-changed'));
+  }
+
   return data as any;
 }
 
@@ -40,6 +44,34 @@ export async function apiAdminLogin(username: string, password: string) {
 
 export async function apiGetProfile(token: string) {
   return request('/api/profile', 'GET', undefined, token);
+}
+
+export interface UserStatistics {
+  stats: {
+    totalWishes: number;
+    wishesMet: number;
+    inProgress: number;
+    pending: number;
+    completionRate: number;
+    averageProgress: number;
+    streakDays: number;
+    totalRecords: number;
+    meditationMinutes: number;
+    meditationSessions: number;
+    accountAge: number;
+    joinDate: string;
+    todayActivity: number;
+    weekActivity: number;
+    monthActivity: number;
+    activeDaysMonth: number;
+  };
+  activity: Record<'week' | 'month' | 'year', Array<{ date: string; label: string; activity: number }>>;
+  features: Array<{ name: string; usage: number; icon: string }>;
+  updatedAt: string;
+}
+
+export async function apiGetStatistics(token: string): Promise<UserStatistics> {
+  return request('/api/statistics', 'GET', undefined, token);
 }
 
 export async function apiUpdateProfile(token: string, payload: { email?: string; bio?: string; languagePreference?: string }) {

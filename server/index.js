@@ -25,6 +25,7 @@ import SleepEntry from './models/SleepEntry.js';
 import Quote from './models/Quote.js';
 import SelfCareTip from './models/SelfCareTip.js';
 import { generateLocalReply } from './assistantReply.js';
+import { buildStatistics } from './statistics.js';
 
 dotenv.config();
 
@@ -202,6 +203,38 @@ app.post('/api/admin/login', async (req, res) => {
       role: 'admin'
     }
   });
+});
+
+app.get('/api/statistics', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('createdAt').lean();
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const definitions = [
+      { model: Wish, name: 'Wish List', icon: '\u2728' },
+      { model: Event, name: 'Calendar', icon: '\ud83d\udcc5' },
+      { model: FitnessEntry, name: 'Fitness', icon: '\ud83d\udcaa' },
+      { model: MusicItem, name: 'Music', icon: '\ud83c\udfb5' },
+      { model: MentalHealthEntry, name: 'Mental Health', icon: '\ud83c\udf3f' },
+      { model: AddictionEntry, name: 'Addiction Help', icon: '\ud83e\udd1d' },
+      { model: Translation, name: 'Translate', icon: '\ud83c\udf10' },
+      { model: MeditationSession, name: 'Meditation', icon: '\ud83e\uddd8', owner: 'userId' },
+      { model: MoodEntry, name: 'Mood', icon: '\ud83d\ude42', owner: 'userId' },
+      { model: JournalEntry, name: 'Journal', icon: '\ud83d\udcd3', owner: 'userId' },
+      { model: GratitudeEntry, name: 'Gratitude', icon: '\ud83d\ude4f', owner: 'userId' },
+      { model: HabitTracker, name: 'Habits', icon: '\u2705', owner: 'userId' },
+      { model: WaterIntake, name: 'Water', icon: '\ud83d\udca7', owner: 'userId' },
+      { model: SleepEntry, name: 'Sleep', icon: '\ud83d\ude34', owner: 'userId' },
+    ];
+    const sources = await Promise.all(definitions.map(async ({ model, name, icon, owner = 'user' }) => ({
+      name,
+      icon,
+      records: await model.find({ [owner]: req.user.id }).select('createdAt completedAt date progress duration').lean(),
+    })));
+    res.set('Cache-Control', 'no-store');
+    res.json(buildStatistics(user, sources));
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to load statistics. Please try again.' });
+  }
 });
 
 app.get('/api/profile', authMiddleware, async (req, res) => {

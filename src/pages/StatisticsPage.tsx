@@ -1,40 +1,5 @@
 import { useEffect, useState } from 'react';
-
-interface UserStats {
-  totalWishes: number;
-  wishesMet: number;
-  streakDays: number;
-  sessionTime: number;
-  profileViews: number;
-  completionRate: number;
-  averageSessionLength: number;
-  lastActive: string;
-  joinDate: string;
-  accountAge: number;
-  todayActivity: number;
-  weekActivity: number;
-  monthActivity: number;
-}
-
-interface StatCard {
-  label: string;
-  value: string | number;
-  icon: string;
-  color: string;
-  trend?: string;
-  trendUp?: boolean;
-}
-
-interface ChartData {
-  label: string;
-  value: number;
-  percentage: number;
-}
-
-interface ActivityData {
-  date: string;
-  activity: number;
-}
+import { apiGetStatistics, type UserStatistics } from '../api';
 
 interface StatisticsPageProps {
   currentUser: string;
@@ -42,70 +7,90 @@ interface StatisticsPageProps {
 }
 
 export default function StatisticsPage({ currentUser, token }: StatisticsPageProps) {
-  const [stats, setStats] = useState<UserStats>({
-    totalWishes: 24,
-    wishesMet: 18,
-    streakDays: 12,
-    sessionTime: 8420,
-    profileViews: 156,
-    completionRate: 75,
-    averageSessionLength: 45,
-    lastActive: 'Just now',
-    joinDate: 'Jan 15, 2024',
-    accountAge: 175,
-    todayActivity: 42,
-    weekActivity: 287,
-    monthActivity: 1203,
-  });
-
+  const [data, setData] = useState<UserStatistics | null>(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'achievements' | 'insights'>('overview');
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
 
-  // Mock activity data
-  const activityData: ActivityData[] = [
-    { date: 'Mon', activity: 45 },
-    { date: 'Tue', activity: 62 },
-    { date: 'Wed', activity: 38 },
-    { date: 'Thu', activity: 55 },
-    { date: 'Fri', activity: 71 },
-    { date: 'Sat', activity: 48 },
-    { date: 'Sun', activity: 68 },
-  ];
+  useEffect(() => {
+    let disposed = false;
+    let inFlight = false;
+    setData(null);
+    setError('');
+    async function refresh() {
+      if (inFlight || document.visibilityState === 'hidden') return;
+      inFlight = true;
+      try {
+        const result = await apiGetStatistics(token);
+        if (!disposed) {
+          setData(result);
+          setError('');
+        }
+      } catch (failure) {
+        if (!disposed) setError(failure instanceof Error ? failure.message : 'Unable to load statistics.');
+      } finally {
+        inFlight = false;
+      }
+    }
+    void refresh();
+    const timer = window.setInterval(refresh, 10000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('one-wish-data-changed', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('one-wish-data-changed', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [token, retry]);
+
+  if (!data) {
+    return (
+      <section className="page-card statistics-card" aria-busy={!error}>
+        <h2>Statistics &amp; Analytics</h2>
+        {error ? <p role="alert">{error}</p> : <p role="status">Loading statistics...</p>}
+        {error && <button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button>}
+      </section>
+    );
+  }
+
+  const { stats } = data;
+  const activityData = data.activity[selectedPeriod];
+  const maxActivity = Math.max(1, ...activityData.map(entry => entry.activity));
+  const totalActivity = activityData.reduce((total, entry) => total + entry.activity, 0);
+  const peak = activityData.reduce((best, entry) => entry.activity > best.activity ? entry : best, activityData[0]);
 
   const achievements = [
-    { icon: '🏆', name: 'Wish Master', description: 'Created 20+ wishes', unlocked: true },
-    { icon: '✨', name: 'Consistent', description: '7-day streak', unlocked: true },
-    { icon: '🎯', name: 'Achiever', description: 'Completed 10 wishes', unlocked: true },
-    { icon: '📚', name: 'Explorer', description: 'Visited all features', unlocked: true },
-    { icon: '🔥', name: 'On Fire', description: '30-day streak', unlocked: false },
-    { icon: '💎', name: 'Premium User', description: 'Upgraded account', unlocked: false },
+    { icon: '🏆', name: 'Wish Master', description: 'Created 20+ wishes', unlocked: stats.totalWishes >= 20 },
+    { icon: '✨', name: 'Consistent', description: '7-day saved-entry streak', unlocked: stats.streakDays >= 7 },
+    { icon: '🎯', name: 'Achiever', description: 'Completed 10 wishes', unlocked: stats.wishesMet >= 10 },
+    { icon: '📚', name: 'First Wish', description: 'Created your first wish', unlocked: stats.totalWishes >= 1 },
+    { icon: '🔥', name: 'On Fire', description: '30-day saved-entry streak', unlocked: stats.streakDays >= 30 },
+    { icon: '💎', name: 'Mindful', description: 'Logged 10 meditation sessions', unlocked: stats.meditationSessions >= 10 },
   ];
 
-  const wishBreakdown: ChartData[] = [
-    { label: 'Completed', value: stats.wishesMet, percentage: 75 },
-    { label: 'In Progress', value: 4, percentage: 17 },
-    { label: 'Pending', value: 2, percentage: 8 },
-  ];
-
-  const preferredFeatures = [
-    { name: 'Wish List', usage: 245, icon: '✨' },
-    { name: 'Calendar', usage: 198, icon: '📅' },
-    { name: 'Weather', usage: 156, icon: '🌤️' },
-    { name: 'Fitness', usage: 123, icon: '💪' },
-    { name: 'Translate', usage: 89, icon: '🌐' },
-    { name: 'Music', usage: 67, icon: '🎵' },
-  ];
-
-  const maxUsage = Math.max(...preferredFeatures.map(f => f.usage));
+  const wishBreakdown = [
+    { label: 'Completed', value: stats.wishesMet },
+    { label: 'In Progress', value: stats.inProgress },
+    { label: 'Pending', value: stats.pending },
+  ].map(item => ({ ...item, percentage: stats.totalWishes ? Math.round(item.value / stats.totalWishes * 100) : 0 }));
+  const preferredFeatures = data.features;
+  const maxUsage = Math.max(1, ...preferredFeatures.map(feature => feature.usage));
+  const topFeature = preferredFeatures.find(feature => feature.usage > 0);
 
   return (
     <section className="page-card statistics-card">
       <div className="page-header">
         <div>
           <h2>📊 Statistics & Analytics</h2>
-          <p>Your personal performance and activity metrics</p>
+          <p>{currentUser}'s saved activity · UTC</p>
+          <p role="status">Updated {new Date(data.updatedAt).toLocaleTimeString()}</p>
         </div>
       </div>
+      {error && <p role="alert">Refresh failed: {error} Showing the last successful update.</p>}
 
       {/* Key Metrics Overview */}
       {activeTab === 'overview' && (
@@ -124,7 +109,7 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
               <div className="stat-content">
                 <span className="stat-label">Wishes Met</span>
                 <span className="stat-value">{stats.wishesMet}</span>
-                <span className="stat-subtitle">↑ 75% completion</span>
+                <span className="stat-subtitle">{stats.completionRate}% completion</span>
               </div>
             </div>
 
@@ -133,25 +118,25 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
               <div className="stat-content">
                 <span className="stat-label">Current Streak</span>
                 <span className="stat-value">{stats.streakDays}</span>
-                <span className="stat-subtitle">days active</span>
+                <span className="stat-subtitle">days with saved entries</span>
               </div>
             </div>
 
             <div className="stat-tile">
               <div className="stat-icon">⏱️</div>
               <div className="stat-content">
-                <span className="stat-label">Total Time Spent</span>
-                <span className="stat-value">{Math.floor(stats.sessionTime / 60)}h</span>
-                <span className="stat-subtitle">{stats.sessionTime} min</span>
+                <span className="stat-label">Meditation Time</span>
+                <span className="stat-value">{stats.meditationMinutes}m</span>
+                <span className="stat-subtitle">logged sessions</span>
               </div>
             </div>
 
             <div className="stat-tile">
               <div className="stat-icon">👁️</div>
               <div className="stat-content">
-                <span className="stat-label">Profile Views</span>
-                <span className="stat-value">{stats.profileViews}</span>
-                <span className="stat-subtitle">↑ +12 this week</span>
+                <span className="stat-label">Saved Records</span>
+                <span className="stat-value">{stats.totalRecords}</span>
+                <span className="stat-subtitle">across tracked features</span>
               </div>
             </div>
 
@@ -176,9 +161,9 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
             <div className="stat-tile">
               <div className="stat-icon">⌚</div>
               <div className="stat-content">
-                <span className="stat-label">Avg Session</span>
-                <span className="stat-value">{stats.averageSessionLength}m</span>
-                <span className="stat-subtitle">per session</span>
+                <span className="stat-label">Average Wish Progress</span>
+                <span className="stat-value">{stats.averageProgress}%</span>
+                <span className="stat-subtitle">all wishes</span>
               </div>
             </div>
           </div>
@@ -190,17 +175,17 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
               <div className="activity-card">
                 <span className="activity-label">Today</span>
                 <span className="activity-value">{stats.todayActivity}</span>
-                <span className="activity-unit">actions</span>
+                <span className="activity-unit">saved entries</span>
               </div>
               <div className="activity-card">
-                <span className="activity-label">This Week</span>
+                <span className="activity-label">Last 7 Days</span>
                 <span className="activity-value">{stats.weekActivity}</span>
-                <span className="activity-unit">actions</span>
+                <span className="activity-unit">saved entries</span>
               </div>
               <div className="activity-card">
-                <span className="activity-label">This Month</span>
+                <span className="activity-label">Last 30 Days</span>
                 <span className="activity-value">{stats.monthActivity}</span>
-                <span className="activity-unit">actions</span>
+                <span className="activity-unit">saved entries</span>
               </div>
             </div>
           </div>
@@ -226,7 +211,7 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
 
           {/* Top Features */}
           <div className="features-section">
-            <h3>🌟 Most Used Features</h3>
+            <h3>🌟 Saved Records by Feature</h3>
             <div className="features-list">
               {preferredFeatures.map((feature, index) => (
                 <div key={feature.name} className="feature-item">
@@ -253,13 +238,13 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
       {activeTab === 'activity' && (
         <>
           <div className="activity-controls">
-            <h3>📈 Weekly Activity</h3>
+            <h3>📈 {selectedPeriod === 'year' ? 'Last 12 Months' : selectedPeriod === 'month' ? 'Last 30 Days' : 'Last 7 Days'}</h3>
             <div className="period-selector">
-              {['week', 'month', 'year'].map((period) => (
+              {(['week', 'month', 'year'] as const).map((period) => (
                 <button
                   key={period}
                   className={`period-btn ${selectedPeriod === period ? 'active' : ''}`}
-                  onClick={() => setSelectedPeriod(period as any)}
+                  onClick={() => setSelectedPeriod(period)}
                 >
                   {period.charAt(0).toUpperCase() + period.slice(1)}
                 </button>
@@ -275,11 +260,11 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
                     <div
                       className="chart-bar"
                       style={{
-                        height: `${(data.activity / 100) * 300}px`,
+                        height: `${(data.activity / maxActivity) * 300}px`,
                       }}
                     />
                   </div>
-                  <span className="chart-label">{data.date}</span>
+                  <span className="chart-label">{data.label}</span>
                   <span className="chart-value">{data.activity}</span>
                 </div>
               ))}
@@ -288,21 +273,21 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
 
           <div className="activity-stats">
             <div className="activity-stat">
-              <span className="stat-label">Average Daily Activity</span>
+              <span className="stat-label">{selectedPeriod === 'year' ? 'Average Monthly Entries' : 'Average Daily Entries'}</span>
               <span className="stat-value">
-                {Math.round(activityData.reduce((acc, d) => acc + d.activity, 0) / activityData.length)}
+                {(totalActivity / activityData.length).toFixed(1)}
               </span>
             </div>
             <div className="activity-stat">
-              <span className="stat-label">Peak Day</span>
+              <span className="stat-label">{selectedPeriod === 'year' ? 'Peak Month' : 'Peak Day'}</span>
               <span className="stat-value">
-                {activityData[activityData.reduce((maxIdx, d, i, arr) => d.activity > arr[maxIdx].activity ? i : maxIdx, 0)].date}
+                {peak.activity > 0 ? peak.label : 'No activity yet'}
               </span>
             </div>
             <div className="activity-stat">
-              <span className="stat-label">Total Actions</span>
+              <span className="stat-label">Saved Entries</span>
               <span className="stat-value">
-                {activityData.reduce((acc, d) => acc + d.activity, 0)}
+                {totalActivity}
               </span>
             </div>
           </div>
@@ -344,40 +329,35 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
           <div className="insights-grid">
             <div className="insight-card">
               <div className="insight-icon">⏱️</div>
-              <h4>Best Time to Be Active</h4>
-              <p className="insight-text">You're most active on Fridays at 7-8 PM</p>
-              <span className="insight-tip">💡 Try scheduling important tasks during this time!</span>
+              <h4>Leading Feature</h4>
+              <p className="insight-text">{topFeature ? `${topFeature.name}: ${topFeature.usage} saved records` : 'No saved activity yet.'}</p>
             </div>
 
             <div className="insight-card">
               <div className="insight-icon">📈</div>
-              <h4>Growth Trajectory</h4>
-              <p className="insight-text">Your completion rate has improved by 12% this month</p>
-              <span className="insight-tip">💡 Keep up the momentum!</span>
+              <h4>Wish Completion</h4>
+              <p className="insight-text">{stats.wishesMet} of {stats.totalWishes} wishes completed ({stats.completionRate}%)</p>
             </div>
 
             <div className="insight-card">
               <div className="insight-icon">🎯</div>
-              <h4>Most Common Goal</h4>
-              <p className="insight-text">Personal Development goals are your strength</p>
-              <span className="insight-tip">💡 Challenge yourself with new categories!</span>
+              <h4>Wish Progress</h4>
+              <p className="insight-text">{stats.inProgress} wishes in progress, {stats.pending} not started</p>
             </div>
 
             <div className="insight-card">
               <div className="insight-icon">🔄</div>
-              <h4>Consistency Score</h4>
-              <p className="insight-text">You've maintained an 85% consistency rate</p>
-              <span className="insight-tip">💡 Aim for 100% to unlock special badges!</span>
+              <h4>Active Days</h4>
+              <p className="insight-text">{stats.activeDaysMonth} days with saved entries in the last 30 days</p>
             </div>
           </div>
 
           <div className="tips-section">
             <h4>📝 Personalized Tips</h4>
             <ul className="tips-list">
-              <li>✅ You're on track to achieve your monthly goals!</li>
-              <li>🎯 Consider setting a reminder for your low-activity days</li>
-              <li>📚 Explore features you haven't used yet to broaden your experience</li>
-              <li>🏆 One more wish to unlock the "Achiever" badge!</li>
+              <li>{stats.totalWishes === 0 ? 'Create your first wish to start tracking progress.' : `${stats.totalWishes - stats.wishesMet} wishes remain unfinished.`}</li>
+              <li>{stats.wishesMet >= 10 ? 'Achiever badge unlocked.' : `${10 - stats.wishesMet} more completed wishes to unlock Achiever.`}</li>
+              <li>{stats.streakDays >= 7 ? `Your current saved-entry streak is ${stats.streakDays} days.` : `${Math.max(0, 7 - stats.streakDays)} more consecutive active days to reach a 7-day streak.`}</li>
             </ul>
           </div>
         </>
@@ -385,11 +365,11 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
 
       {/* Tab Navigation */}
       <div className="statistics-tabs">
-        {['overview', 'activity', 'achievements', 'insights'].map((tab) => (
+        {(['overview', 'activity', 'achievements', 'insights'] as const).map((tab) => (
           <button
             key={tab}
             className={`stats-tab-btn ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => setActiveTab(tab)}
           >
             {tab === 'overview' && '📊 Overview'}
             {tab === 'activity' && '📈 Activity'}
