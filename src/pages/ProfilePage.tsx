@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiGetProfile, apiUpdateProfile, apiUploadProfilePicture } from '../api';
+import { apiGetProfile, apiUpdateProfile, apiUploadProfilePicture, apiRemoveProfilePicture } from '../api';
 
 interface ProfileState {
   username: string;
@@ -62,28 +62,31 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
 
   useEffect(() => {
+    let disposed = false;
+    setProfilePicture(null);
+    setProfilePicturePreview(null);
     async function loadProfile() {
       try {
         setLoading(true);
         const profile = await apiGetProfile(token);
+        if (disposed) return;
         setSavedProfile(profile);
         setName(profile.username);
         setEmail(profile.email || '');
         setBio(profile.bio || '');
         setLanguagePreference(profile.languagePreference || 'English');
-        if (profile.profilePicture) {
-          setProfilePicture(profile.profilePicture);
-          setProfilePicturePreview(profile.profilePicture);
-        }
+        setProfilePicture(profile.profilePicture);
+        setProfilePicturePreview(profile.profilePicture);
         setSavedAt(new Date().toISOString());
       } catch (err) {
-        setError((err as Error).message);
+        if (!disposed) setError((err as Error).message);
       } finally {
-        setLoading(false);
+        if (!disposed) setLoading(false);
       }
     }
 
     loadProfile();
+    return () => { disposed = true; };
   }, [token]);
 
   const hasChanges = name !== savedProfile.username || email !== savedProfile.email || bio !== savedProfile.bio || languagePreference !== (savedProfile.languagePreference || 'English');
@@ -194,6 +197,7 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
   }
 
   function handleProfilePictureChange(event: React.ChangeEvent<HTMLInputElement>) {
+    if (isUploadingPicture) return;
     const file = event.target.files?.[0];
     if (file) {
       // Validate file size (max 5MB)
@@ -203,16 +207,23 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
       }
 
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        setError('Please select a PNG, JPEG, GIF, or WebP image');
         return;
       }
 
       // Create preview
+      setIsUploadingPicture(true);
+      setError(null);
+      setSuccessMessage(null);
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onload = () => {
         setProfilePicturePreview(reader.result as string);
         handleProfilePictureUpload(file);
+      };
+      reader.onerror = () => {
+        setError('Unable to read this image. Please try again.');
+        setIsUploadingPicture(false);
       };
       reader.readAsDataURL(file);
     }
@@ -222,13 +233,30 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
     try {
       setIsUploadingPicture(true);
       setError(null);
-      const data = (await apiUploadProfilePicture(token, file)) as { profilePicture?: string };
-      setProfilePicture(data.profilePicture ?? null);
-      setProfilePicturePreview(data.profilePicture ?? null);
+      const data = await apiUploadProfilePicture(token, file);
+      setProfilePicture(data.profilePicture);
+      setProfilePicturePreview(data.profilePicture);
       setSuccessMessage('Profile picture updated successfully!');
     } catch (err) {
       setError((err as Error).message);
       setProfilePicturePreview(profilePicture);
+    } finally {
+      setIsUploadingPicture(false);
+    }
+  }
+
+  async function handleRemoveProfilePicture() {
+    if (isUploadingPicture) return;
+    setIsUploadingPicture(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      await apiRemoveProfilePicture(token);
+      setProfilePicture(null);
+      setProfilePicturePreview(null);
+      setSuccessMessage('Profile picture removed.');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to remove profile picture.');
     } finally {
       setIsUploadingPicture(false);
     }
@@ -268,7 +296,7 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
                   📸 Upload Picture
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
                     onChange={handleProfilePictureChange}
                     disabled={isUploadingPicture}
                     style={{ display: 'none' }}
@@ -277,10 +305,8 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
                 {profilePicturePreview && (
                   <button
                     className="avatar-btn remove-btn"
-                    onClick={() => {
-                      setProfilePicture(null);
-                      setProfilePicturePreview(null);
-                    }}
+                    onClick={handleRemoveProfilePicture}
+                    disabled={isUploadingPicture}
                   >
                     🗑️ Remove Picture
                   </button>
@@ -345,11 +371,11 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
             <div className="profile-form">
               <div className="picture-upload-section">
                 <h4>📸 Profile Picture</h4>
-                <p>Upload a profile picture (JPG, PNG, GIF - max 5MB)</p>
+                <p>Upload a profile picture (JPG, PNG, GIF, WebP - max 5MB)</p>
                 <label className="file-input-label">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
                     onChange={handleProfilePictureChange}
                     disabled={isUploadingPicture}
                   />
@@ -357,7 +383,7 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
                     {isUploadingPicture ? '⏳ Uploading...' : '📁 Choose File'}
                   </span>
                 </label>
-                {profilePicturePreview && (
+                {profilePicture && !isUploadingPicture && (
                   <p className="upload-status">✅ Picture uploaded successfully!</p>
                 )}
               </div>

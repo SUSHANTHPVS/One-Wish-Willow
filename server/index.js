@@ -30,6 +30,7 @@ import { generateLocalReply } from './assistantReply.js';
 import { buildStatistics } from './statistics.js';
 import { createGoogleAuthHandler } from './googleAuth.js';
 import { buildNotifications } from './notifications.js';
+import { normalizeProfilePicture } from './profilePicture.js';
 
 dotenv.config();
 
@@ -252,56 +253,35 @@ app.get('/api/statistics', authMiddleware, async (req, res) => {
 app.get('/api/profile', authMiddleware, async (req, res) => {
   const user = await User.findById(req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
+  res.set('Cache-Control', 'no-store');
   res.json({ username: user.username, email: user.email, bio: user.bio, profilePicture: user.profilePicture, languagePreference: user.languagePreference });
 });
 
 app.post('/api/profile/picture', authMiddleware, async (req, res) => {
+  let picture;
   try {
     const { fileData, fileName } = req.body;
-    
-    if (!fileData || !fileName) {
-      return res.status(400).json({ message: 'No file data provided' });
-    }
-
-    // Validate file is an image
-    if (!fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return res.status(400).json({ message: 'Only image files are allowed' });
-    }
-
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // Delete old profile picture if it exists
-    if (user.profilePicture) {
-      const oldPicturePath = path.resolve(process.cwd(), 'public', user.profilePicture);
-      if (fs.existsSync(oldPicturePath)) {
-        fs.unlinkSync(oldPicturePath);
-      }
-    }
-
-    // Decode base64 and save file
-    const base64Data = fileData.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    // Check file size (5MB limit)
-    if (buffer.length > 5 * 1024 * 1024) {
-      return res.status(400).json({ message: 'File size exceeds 5MB limit' });
-    }
-    
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const safeFileName = 'profile-' + uniqueSuffix + path.extname(fileName);
-    const filePath = path.join(uploadsDir, safeFileName);
-    
-    fs.writeFileSync(filePath, buffer);
-    
-    // Save new profile picture path
-    const pictureUrl = `/uploads/${safeFileName}`;
-    user.profilePicture = pictureUrl;
-    await user.save();
-
-    res.json({ username: user.username, email: user.email, bio: user.bio, profilePicture: user.profilePicture, languagePreference: user.languagePreference });
+    picture = normalizeProfilePicture(fileData, fileName);
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Server error' });
+    return res.status(400).json({ message: error.message });
+  }
+  try {
+    const user = await User.findByIdAndUpdate(req.user.id, { $set: { profilePicture: picture } }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.set('Cache-Control', 'no-store');
+    res.json({ username: user.username, email: user.email, bio: user.bio, profilePicture: user.profilePicture, languagePreference: user.languagePreference });
+  } catch {
+    res.status(500).json({ message: 'Unable to save profile picture. Please try again.' });
+  }
+});
+
+app.delete('/api/profile/picture', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.user.id, { $set: { profilePicture: null } }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ username: user.username, email: user.email, bio: user.bio, profilePicture: null, languagePreference: user.languagePreference });
+  } catch (error) {
+    res.status(500).json({ message: 'Unable to remove profile picture. Please try again.' });
   }
 });
 

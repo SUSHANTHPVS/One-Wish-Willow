@@ -19,6 +19,7 @@ import TermsAndConditionsPage from './pages/TermsAndConditionsPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import NotificationCenter from './components/NotificationCenter';
+import UserMenu from './components/UserMenu';
 import { apiLogin, apiRegister, apiAdminLogin, apiGoogleLogin } from './api';
 
 interface AuthSession {
@@ -206,7 +207,8 @@ function App() {
           </h1>
           <p>Welcome back, {authSession.username}. Dream. Plan. Remember.</p>
         </div>
-        <nav className="main-nav">
+        <div className="header-navigation">
+        <nav className="main-nav" aria-label="Main navigation">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             Home
           </NavLink>
@@ -237,9 +239,6 @@ function App() {
           <NavLink to="/wish-list" className={({ isActive }) => (isActive ? 'active' : '')}>
             Wish List
           </NavLink>
-          <NavLink to="/profile" className={({ isActive }) => (isActive ? 'active' : '')}>
-            Profile
-          </NavLink>
           <NavLink to="/statistics" className={({ isActive }) => (isActive ? 'active' : '')}>
             Statistics
           </NavLink>
@@ -247,10 +246,9 @@ function App() {
           <button className="theme-toggle-button" onClick={toggleTheme} type="button">
             {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
           </button>
-          <button className="logout-button" onClick={handleLogout} type="button">
-            Logout
-          </button>
         </nav>
+        <UserMenu username={authSession.username} token={authSession.token} onLogout={handleLogout} />
+        </div>
       </header>
 
       <main className="app-content">

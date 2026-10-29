@@ -47,7 +47,18 @@ unread filter, and direct links to Calendar or Wish List.
 These are in-app notifications. Delivery while the site is closed, email,
 and browser push notifications are not configured.
 
+## Profile Pictures
+
+New profile pictures are validated PNG, JPEG, GIF, or WebP uploads (up to 5MB)
+stored with the user's MongoDB record. They no longer depend on Render's
+temporary filesystem and remain available after refreshes and redeployments.
+Removing a picture also updates the database.
+
+After deploying this fix to both services, upload your picture once again if
+the previous file has already disappeared. Older local file paths are resolved
+against the backend URL when their files are still available.
+
 ## Checks
 
 - `npm run build`
-- `node --test server/googleAuth.test.js server/statistics.test.js server/notifications.test.js`
+- `node --test server/googleAuth.test.js server/statistics.test.js server/notifications.test.js server/profilePicture.test.js`

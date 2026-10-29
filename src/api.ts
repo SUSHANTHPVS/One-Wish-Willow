@@ -46,8 +46,26 @@ export async function apiAdminLogin(username: string, password: string) {
   return request('/api/admin/login', 'POST', { username, password });
 }
 
-export async function apiGetProfile(token: string) {
-  return request('/api/profile', 'GET', undefined, token);
+export interface UserProfile {
+  username: string;
+  email: string;
+  bio: string;
+  languagePreference?: string;
+  profilePicture: string | null;
+}
+
+function normalizeProfile(profile: UserProfile): UserProfile {
+  const picture = profile.profilePicture;
+  return {
+    ...profile,
+    profilePicture: picture?.startsWith('/')
+      ? new URL(picture, new URL(API_BASE || '/', window.location.origin)).href
+      : picture || null,
+  };
+}
+
+export async function apiGetProfile(token: string): Promise<UserProfile> {
+  return normalizeProfile(await request('/api/profile', 'GET', undefined, token));
 }
 
 export interface UserStatistics {
@@ -130,11 +148,13 @@ export async function apiDeleteEvent(token: string, id: string) {
 }
 
 export async function apiUpdateProfile(token: string, payload: { email?: string; bio?: string; languagePreference?: string }) {
-  return request('/api/profile', 'PUT', payload, token);
+  const profile = normalizeProfile(await request('/api/profile', 'PUT', payload, token));
+  window.dispatchEvent(new CustomEvent('one-wish-profile-changed', { detail: profile }));
+  return profile;
 }
 
 export async function apiUploadProfilePicture(token: string, file: File) {
-  return new Promise((resolve, reject) => {
+  return new Promise<UserProfile>((resolve, reject) => {
     const reader = new FileReader();
     
     reader.onload = async () => {
@@ -146,7 +166,9 @@ export async function apiUploadProfilePicture(token: string, file: File) {
         };
         
         const data = await request('/api/profile/picture', 'POST', payload, token);
-        resolve(data);
+        const profile = normalizeProfile(data);
+        window.dispatchEvent(new CustomEvent('one-wish-profile-changed', { detail: profile }));
+        resolve(profile);
       } catch (error) {
         reject(error);
       }
@@ -158,6 +180,12 @@ export async function apiUploadProfilePicture(token: string, file: File) {
     
     reader.readAsDataURL(file);
   });
+}
+
+export async function apiRemoveProfilePicture(token: string): Promise<UserProfile> {
+  const profile = normalizeProfile(await request('/api/profile/picture', 'DELETE', undefined, token));
+  window.dispatchEvent(new CustomEvent('one-wish-profile-changed', { detail: profile }));
+  return profile;
 }
 
 export async function apiGetWishes(token: string) {
