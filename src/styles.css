@@ -123,6 +123,15 @@ button {
   gap: 18px;
 }
 
+.login-card-landscape {
+  width: min(680px, 100%);
+  background: #160d24;
+}
+
+body.theme-light .login-card-landscape {
+  background: #fff7e0;
+}
+
 .login-card label {
   display: grid;
   gap: 10px;

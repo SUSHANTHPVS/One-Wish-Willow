@@ -32,7 +32,7 @@ export default function LoginPage({ onLogin, onSwitchToRegister, onSwitchToAdmin
 
   return (
     <main className="login-screen">
-      <form className="login-card" onSubmit={handleSubmit}>
+      <form className="login-card login-card-landscape" onSubmit={handleSubmit}>
         <div className="login-brand">
           <span>One Wish Willow</span>
           <p>Sign in to access your wishes, calendar, and weather dreams.</p>
