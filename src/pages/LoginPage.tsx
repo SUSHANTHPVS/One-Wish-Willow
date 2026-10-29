@@ -1,14 +1,17 @@
 import { FormEvent, useState } from 'react';
+import PasswordInput from '../components/PasswordInput';
+import GoogleSignIn from '../components/GoogleSignIn';
 
 interface LoginPageProps {
   onLogin: (name: string, password: string) => Promise<string | null>;
+  onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
   onSwitchToRegister: () => void;
   onSwitchToAdminLogin: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }
 
-export default function LoginPage({ onLogin, onSwitchToRegister, onSwitchToAdminLogin, theme, onToggleTheme }: LoginPageProps) {
+export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, onSwitchToAdminLogin, theme, onToggleTheme }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -55,20 +58,23 @@ export default function LoginPage({ onLogin, onSwitchToRegister, onSwitchToAdmin
           />
         </label>
 
-        <label>
-          Password
-          <input
-            type="password"
+        <div className="auth-field">
+          <label htmlFor="login-password">Password</label>
+          <PasswordInput
+            id="login-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Enter password"
             autoComplete="current-password"
           />
-        </label>
+        </div>
 
         {error && <p className="login-error">{error}</p>}
 
         <button type="submit">Login</button>
+
+        <div className="login-divider"><span>or</span></div>
+        <GoogleSignIn onGoogleLogin={onGoogleLogin} theme={theme} />
 
         <p className="login-note">
           New to One Wish Willow?{' '}

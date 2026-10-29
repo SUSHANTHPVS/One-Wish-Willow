@@ -38,6 +38,10 @@ export async function apiLogin(usernameOrEmail: string, password: string) {
   return request('/api/auth/login', 'POST', { usernameOrEmail, password });
 }
 
+export async function apiGoogleLogin(credential: string, termsAccepted = false) {
+  return request('/api/auth/google', 'POST', { credential, termsAccepted });
+}
+
 export async function apiAdminLogin(username: string, password: string) {
   return request('/api/admin/login', 'POST', { username, password });
 }
@@ -72,6 +76,57 @@ export interface UserStatistics {
 
 export async function apiGetStatistics(token: string): Promise<UserStatistics> {
   return request('/api/statistics', 'GET', undefined, token);
+}
+
+export interface AppNotification {
+  _id: string;
+  key: string;
+  kind: string;
+  title: string;
+  message: string;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export async function apiGetNotifications(token: string): Promise<{ items: AppNotification[]; unreadCount: number }> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  return request(`/api/notifications?timeZone=${encodeURIComponent(timeZone)}`, 'GET', undefined, token);
+}
+
+export async function apiReadNotification(token: string, id?: string) {
+  return request(id ? `/api/notifications/${id}/read` : '/api/notifications/read-all', 'PUT', {}, token);
+}
+
+export async function apiDismissNotification(token: string, id: string) {
+  return request(`/api/notifications/${id}`, 'DELETE', undefined, token);
+}
+
+export interface CalendarEventPayload {
+  title: string;
+  date: string;
+  deadline: string;
+  notes: string;
+  category: string;
+  priority: string;
+  completed: boolean;
+}
+
+export interface StoredCalendarEvent extends CalendarEventPayload {
+  _id: string;
+  clientId?: string;
+}
+
+export async function apiGetEvents(token: string): Promise<StoredCalendarEvent[]> {
+  return request('/api/events', 'GET', undefined, token);
+}
+
+export async function apiSaveEvent(token: string, payload: Partial<CalendarEventPayload> & { clientId?: string }, id?: string): Promise<StoredCalendarEvent> {
+  return request(id ? `/api/events/${id}` : '/api/events', id ? 'PUT' : 'POST', payload, token);
+}
+
+export async function apiDeleteEvent(token: string, id: string) {
+  return request(`/api/events/${id}`, 'DELETE', undefined, token);
 }
 
 export async function apiUpdateProfile(token: string, payload: { email?: string; bio?: string; languagePreference?: string }) {

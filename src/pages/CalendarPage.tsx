@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { apiDeleteEvent, apiGetEvents, apiSaveEvent, type StoredCalendarEvent } from '../api';
 
 const categories = ['Personal', 'Work', 'Health', 'Study', 'Dreams'] as const;
 const priorities = ['Low', 'Medium', 'High'] as const;
@@ -33,6 +34,7 @@ function loadEvents(user: string): EventItem[] {
 
 interface CalendarPageProps {
   currentUser: string;
+  token: string;
 }
 
 function generateMonthGrid(date: Date) {
@@ -67,6 +69,26 @@ function formatDateTimeInput(date: Date) {
   const hours = `${date.getHours()}`.padStart(2, '0');
   const minutes = `${date.getMinutes()}`.padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function fromStoredEvent(event: StoredCalendarEvent): EventItem {
+  const parsedDeadline = event.deadline ? new Date(event.deadline) : null;
+  return {
+    id: event._id,
+    title: event.title,
+    date: event.date,
+    deadline: parsedDeadline && Number.isFinite(parsedDeadline.getTime()) ? formatDateTimeInput(parsedDeadline) : '',
+    notes: event.notes || '',
+    category: categories.includes(event.category as EventCategory) ? event.category as EventCategory : 'Dreams',
+    priority: priorities.includes(event.priority as EventPriority) ? event.priority as EventPriority : 'Medium',
+    completed: event.completed,
+  };
+}
+
+function storedDeadline(value: string) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : '';
 }
 
 function parseDateOnly(value: string) {
@@ -123,8 +145,11 @@ function getDeadlineStatus(eventItem: EventItem, now: Date) {
   return { label: 'On track', tone: 'scheduled' };
 }
 
-export default function CalendarPage({ currentUser }: CalendarPageProps) {
-  const [events, setEvents] = useState<EventItem[]>(() => loadEvents(currentUser));
+export default function CalendarPage({ currentUser, token }: CalendarPageProps) {
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -138,8 +163,42 @@ export default function CalendarPage({ currentUser }: CalendarPageProps) {
   const [celebration, setCelebration] = useState<string | null>(null);
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey(currentUser), JSON.stringify(events));
-  }, [events, currentUser]);
+    let disposed = false;
+    setLoading(true);
+    setEvents([]);
+    async function load() {
+      try {
+        let saved = await apiGetEvents(token);
+        const imported = new Set(saved.map(event => event.clientId));
+        const local = loadEvents(currentUser);
+        for (const event of local) {
+          if (imported.has(event.id)) continue;
+          await apiSaveEvent(token, {
+            title: event.title,
+            date: event.date,
+            notes: event.notes || '',
+            deadline: storedDeadline(event.deadline),
+            category: event.category,
+            priority: event.priority,
+            completed: Boolean(event.completed),
+            clientId: event.id,
+          });
+        }
+        if (local.length) saved = await apiGetEvents(token);
+        if (!disposed) {
+          setEvents(saved.map(fromStoredEvent));
+          setError('');
+          try { window.localStorage.removeItem(storageKey(currentUser)); } catch {}
+        }
+      } catch (failure) {
+        if (!disposed) setError(failure instanceof Error ? failure.message : 'Unable to load calendar.');
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    }
+    void load();
+    return () => { disposed = true; };
+  }, [currentUser, token]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
@@ -206,50 +265,57 @@ export default function CalendarPage({ currentUser }: CalendarPageProps) {
     [events, now]
   );
 
-  function addEvent() {
+  async function addEvent() {
+    if (loading || saving) return;
     const trimmedTitle = title.trim();
     const eventDate = date || (deadline ? deadline.slice(0, 10) : '');
-    const eventDeadline = deadline || formatDateTimeInput(new Date());
+    const eventDeadline = deadline;
 
-    if (!trimmedTitle || !eventDate || !eventDeadline) return;
+    if (!trimmedTitle || !eventDate) return;
 
     const eventPayload = {
       title: trimmedTitle,
       date: eventDate,
       notes: notes.trim(),
-      deadline: eventDeadline,
+      deadline: storedDeadline(eventDeadline),
       category,
       priority,
     };
 
-    if (editingId) {
-      setEvents((prev) => prev.map((eventItem) =>
-        eventItem.id === editingId ? { ...eventItem, ...eventPayload, completed: eventItem.completed } : eventItem
-      ));
-      setEditingId(null);
-    } else {
-      setEvents((prev) => [
-        { id: crypto.randomUUID(), ...eventPayload, completed: false },
-        ...prev,
-      ]);
-    }
-
-    setTitle('');
-    setDate('');
-    setNotes('');
-    setDeadline('');
-    setCategory('Dreams');
-    setPriority('Medium');
-  }
-
-  function removeEvent(id: string) {
-    setEvents((prev) => prev.filter((eventItem) => eventItem.id !== id));
-    if (editingId === id) {
+    setSaving(true);
+    setError('');
+    try {
+      const saved = fromStoredEvent(await apiSaveEvent(token, {
+        ...eventPayload,
+        ...(!editingId ? { clientId: crypto.randomUUID(), completed: false } : {}),
+      }, editingId || undefined));
+      setEvents(previous => editingId ? previous.map(item => item.id === editingId ? saved : item) : [saved, ...previous]);
       setEditingId(null);
       setTitle('');
       setDate('');
       setNotes('');
       setDeadline('');
+      setCategory('Dreams');
+      setPriority('Medium');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to save event.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeEvent(id: string) {
+    if (loading || saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      await apiDeleteEvent(token, id);
+      setEvents(previous => previous.filter(event => event.id !== id));
+      if (editingId === id) cancelEdit();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to delete event.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -272,20 +338,24 @@ export default function CalendarPage({ currentUser }: CalendarPageProps) {
     setDeadline('');
   }
 
-  function toggleComplete(id: string) {
+  async function toggleComplete(id: string) {
+    if (loading || saving) return;
     const target = events.find((eventItem) => eventItem.id === id);
     if (!target) return;
 
     const willComplete = !target.completed;
-    setEvents((prev) => prev.map((eventItem) => eventItem.id === id ? { ...eventItem, completed: willComplete } : eventItem));
-
-    if (willComplete) {
-      const deadlineTime = target.deadline ? new Date(target.deadline).getTime() : null;
-      if (deadlineTime && deadlineTime > Date.now()) {
-        setCelebration(`Amazing! You finished “${target.title}” before the deadline.`);
-      } else {
-        setCelebration(`Nice work — “${target.title}” is now complete.`);
+    setSaving(true);
+    setError('');
+    try {
+      const saved = fromStoredEvent(await apiSaveEvent(token, { completed: willComplete }, id));
+      setEvents(previous => previous.map(event => event.id === id ? saved : event));
+      if (willComplete) {
+        setCelebration(`Nice work! "${target.title}" is now complete.`);
       }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to update event.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -298,7 +368,7 @@ export default function CalendarPage({ currentUser }: CalendarPageProps) {
   }
 
   return (
-    <section className="page-card calendar-page">
+    <section className="page-card calendar-page" aria-busy={loading || saving}>
       <div className="page-header">
         <div>
           <h2>Calendar & Reminders</h2>
@@ -306,6 +376,10 @@ export default function CalendarPage({ currentUser }: CalendarPageProps) {
         </div>
         <img src="/calendar-illustration.svg" alt="Calendar illustration" className="page-illustration" />
       </div>
+
+      {loading && <p role="status">Loading calendar...</p>}
+      {saving && <p role="status">Saving calendar...</p>}
+      {error && <p className="login-error" role="alert">{error}</p>}
 
       <div className="calendar-progress-card">
         <div className="progress-ring" style={{ background: `conic-gradient(#ff9f1c ${progressPercent}%, rgba(255, 255, 255, 0.16) ${progressPercent}% 100%)` }}>

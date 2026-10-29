@@ -1,13 +1,16 @@
 import { FormEvent, useState } from 'react';
+import PasswordInput from '../components/PasswordInput';
+import GoogleSignIn from '../components/GoogleSignIn';
 
 interface RegisterPageProps {
   onRegister: (username: string, email: string, password: string) => Promise<string | null>;
+  onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
   onSwitchToLogin: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }
 
-export default function RegisterPage({ onRegister, onSwitchToLogin, theme, onToggleTheme }: RegisterPageProps) {
+export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogin, theme, onToggleTheme }: RegisterPageProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,27 +92,28 @@ export default function RegisterPage({ onRegister, onSwitchToLogin, theme, onTog
           />
         </label>
 
-        <label>
-          Password
-          <input
-            type="password"
+        <div className="auth-field">
+          <label htmlFor="register-password">Password</label>
+          <PasswordInput
+            id="register-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Choose password"
             autoComplete="new-password"
           />
-        </label>
+        </div>
 
-        <label>
-          Confirm Password
-          <input
-            type="password"
+        <div className="auth-field">
+          <label htmlFor="register-confirm-password">Confirm Password</label>
+          <PasswordInput
+            id="register-confirm-password"
+            visibilityLabel="confirm password"
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
             placeholder="Confirm password"
             autoComplete="new-password"
           />
-        </label>
+        </div>
 
         <label className="terms-checkbox">
           <input
@@ -132,6 +136,14 @@ export default function RegisterPage({ onRegister, onSwitchToLogin, theme, onTog
         {error && <p className="login-error">{error}</p>}
 
         <button type="submit">Create Account</button>
+
+        <div className="login-divider"><span>or</span></div>
+        <GoogleSignIn
+          onGoogleLogin={onGoogleLogin}
+          theme={theme}
+          requireTerms
+          termsAccepted={termsAccepted}
+        />
 
         <p className="login-note">
           Already have an account?{' '}

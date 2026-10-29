@@ -6,8 +6,10 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
+import { OAuth2Client } from 'google-auth-library';
 
 import User from './models/User.js';
+import Notification from './models/Notification.js';
 import Wish from './models/Wish.js';
 import Event from './models/Event.js';
 import FitnessEntry from './models/FitnessEntry.js';
@@ -26,6 +28,8 @@ import Quote from './models/Quote.js';
 import SelfCareTip from './models/SelfCareTip.js';
 import { generateLocalReply } from './assistantReply.js';
 import { buildStatistics } from './statistics.js';
+import { createGoogleAuthHandler } from './googleAuth.js';
+import { buildNotifications } from './notifications.js';
 
 dotenv.config();
 
@@ -34,6 +38,7 @@ const requestedPort = Number(process.env.PORT) || 4000;
 const PORT = Number.isNaN(requestedPort) ? 4000 : requestedPort;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/one-wish-willow';
 const JWT_SECRET = process.env.JWT_SECRET || 'one-wish-secret';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_TRANSLATE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY || null;
 const GOOGLE_TRANSLATE_PROJECT_ID = process.env.GOOGLE_TRANSLATE_PROJECT_ID || null;
 
@@ -147,6 +152,13 @@ app.post('/api/auth/register', async (req, res) => {
   const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user: { username: user.username, email: user.email, bio: user.bio } });
 });
+
+app.post('/api/auth/google', createGoogleAuthHandler({
+  userModel: User,
+  googleClient: new OAuth2Client(GOOGLE_CLIENT_ID),
+  clientId: GOOGLE_CLIENT_ID,
+  jwtSecret: JWT_SECRET,
+}));
 
 app.post('/api/auth/login', async (req, res) => {
   const { usernameOrEmail, password } = req.body;
@@ -330,21 +342,116 @@ app.delete('/api/wishes/:id', authMiddleware, async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/notifications', authMiddleware, async (req, res) => {
+  const timeZone = typeof req.query.timeZone === 'string' ? req.query.timeZone : 'UTC';
+  try {
+    new Intl.DateTimeFormat('en', { timeZone }).format();
+  } catch {
+    return res.status(400).json({ message: 'Invalid notification timezone.' });
+  }
+  try {
+    const user = req.user.id;
+    const [wishes, events] = await Promise.all([
+      Wish.find({ user, progress: { $gte: 100 } }).select('title progress createdAt updatedAt').lean(),
+      Event.find({ user, completed: { $ne: true } }).select('title date deadline completed').lean(),
+    ]);
+    const candidates = buildNotifications({ wishes, events, timeZone });
+    if (candidates.length) {
+      try {
+        await Notification.bulkWrite(candidates.map(candidate => ({
+          updateOne: {
+            filter: { user, key: candidate.key },
+            update: {
+              $set: { title: candidate.title, message: candidate.message, href: candidate.href, kind: candidate.kind },
+              $setOnInsert: { user, key: candidate.key, createdAt: candidate.createdAt },
+            },
+            upsert: true,
+          },
+        })), { ordered: false });
+      } catch (error) {
+        if (!error.writeErrors?.length || error.writeErrors.some(failure => failure.code !== 11000)) throw error;
+      }
+    }
+    const filter = { user, key: { $in: candidates.map(candidate => candidate.key) }, dismissedAt: null };
+    const [items, unreadCount] = await Promise.all([
+      Notification.find(filter).sort({ createdAt: -1, _id: -1 }).limit(50).select('-user -__v').lean(),
+      Notification.countDocuments({ ...filter, readAt: null }),
+    ]);
+    res.set('Cache-Control', 'no-store');
+    res.json({ items, unreadCount });
+  } catch {
+    res.status(500).json({ message: 'Unable to load notifications. Please try again.' });
+  }
+});
+
+app.put('/api/notifications/read-all', authMiddleware, async (req, res) => {
+  try {
+    await Notification.updateMany({ user: req.user.id, readAt: null, dismissedAt: null }, { $set: { readAt: new Date() } });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: 'Unable to mark notifications as read.' });
+  }
+});
+
+app.put('/api/notifications/:id/read', authMiddleware, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid notification.' });
+  try {
+    const result = await Notification.updateOne({ _id: req.params.id, user: req.user.id }, { $set: { readAt: new Date() } });
+    if (!result.matchedCount) return res.status(404).json({ message: 'Notification not found.' });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: 'Unable to mark notification as read.' });
+  }
+});
+
+app.delete('/api/notifications/:id', authMiddleware, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid notification.' });
+  try {
+    const result = await Notification.updateOne({ _id: req.params.id, user: req.user.id }, { $set: { dismissedAt: new Date() } });
+    if (!result.matchedCount) return res.status(404).json({ message: 'Notification not found.' });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ message: 'Unable to dismiss notification.' });
+  }
+});
+
+function calendarFields(body) {
+  return Object.fromEntries(['title', 'date', 'deadline', 'notes', 'category', 'priority', 'completed']
+    .filter(field => body[field] !== undefined).map(field => [field, body[field]]));
+}
+
 app.get('/api/events', authMiddleware, async (req, res) => {
   const events = await Event.find({ user: req.user.id });
   res.json(events);
 });
 
 app.post('/api/events', authMiddleware, async (req, res) => {
-  const event = new Event({ user: req.user.id, ...req.body });
-  await event.save();
-  res.json(event);
+  const clientId = typeof req.body.clientId === 'string' ? req.body.clientId.slice(0, 100) : null;
+  try {
+    if (clientId) {
+      const event = await Event.findOneAndUpdate(
+        { user: req.user.id, clientId },
+        { $setOnInsert: { ...calendarFields(req.body), user: req.user.id, clientId } },
+        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
+      );
+      return res.json(event);
+    }
+    const event = new Event({ ...calendarFields(req.body), user: req.user.id });
+    await event.save();
+    res.json(event);
+  } catch (error) {
+    if (error.code === 11000 && clientId) {
+      const existing = await Event.findOne({ user: req.user.id, clientId });
+      if (existing) return res.json(existing);
+    }
+    res.status(400).json({ message: 'Unable to save this calendar event.' });
+  }
 });
 
 app.put('/api/events/:id', authMiddleware, async (req, res) => {
   const event = await Event.findOne({ _id: req.params.id, user: req.user.id });
   if (!event) return res.status(404).json({ message: 'Event not found' });
-  Object.assign(event, req.body);
+  Object.assign(event, calendarFields(req.body));
   await event.save();
   res.json(event);
 });
@@ -1007,6 +1114,7 @@ app.delete('/api/admin/users/:id', adminMiddleware, async (req, res) => {
     
     // Delete user and all their associated data
     await User.findByIdAndDelete(userId);
+    await Notification.deleteMany({ user: userId });
     await Wish.deleteMany({ userId });
     await Event.deleteMany({ userId });
     await FitnessEntry.deleteMany({ userId });

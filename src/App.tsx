@@ -18,7 +18,8 @@ import RegisterPage from './pages/RegisterPage';
 import TermsAndConditionsPage from './pages/TermsAndConditionsPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
-import { apiLogin, apiRegister, apiAdminLogin } from './api';
+import NotificationCenter from './components/NotificationCenter';
+import { apiLogin, apiRegister, apiAdminLogin, apiGoogleLogin } from './api';
 
 interface AuthSession {
   username: string;
@@ -106,6 +107,16 @@ function App() {
     }
   }
 
+  async function handleGoogleLogin(credential: string, termsAccepted: boolean) {
+    try {
+      const result = await apiGoogleLogin(credential, termsAccepted);
+      setAuthSession({ username: result.user.username, token: result.token });
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : 'Google sign-in failed.';
+    }
+  }
+
   async function handleAdminLogin(username: string, password: string) {
     try {
       const result = await apiAdminLogin(username, password);
@@ -167,6 +178,7 @@ function App() {
     ) : authMode === 'register' ? (
       <RegisterPage
         onRegister={handleRegister}
+        onGoogleLogin={handleGoogleLogin}
         onSwitchToLogin={switchToLogin}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -174,6 +186,7 @@ function App() {
     ) : (
       <LoginPage
         onLogin={handleLogin}
+        onGoogleLogin={handleGoogleLogin}
         onSwitchToRegister={switchToRegister}
         onSwitchToAdminLogin={switchToAdminLogin}
         theme={theme}
@@ -230,6 +243,7 @@ function App() {
           <NavLink to="/statistics" className={({ isActive }) => (isActive ? 'active' : '')}>
             Statistics
           </NavLink>
+          <NotificationCenter token={authSession.token} />
           <button className="theme-toggle-button" onClick={toggleTheme} type="button">
             {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
           </button>
@@ -242,7 +256,7 @@ function App() {
       <main className="app-content">
         <Routes>
           <Route path="/" element={<HomePage currentUser={authSession.username} />} />
-          <Route path="/calendar" element={<CalendarPage currentUser={authSession.username} />} />
+          <Route path="/calendar" element={<CalendarPage currentUser={authSession.username} token={authSession.token} />} />
           <Route path="/weather" element={<WeatherPage currentUser={authSession.username} />} />
           <Route path="/fitness" element={<FitnessPage currentUser={authSession.username} />} />
           <Route path="/music" element={<MusicPage currentUser={authSession.username} />} />
@@ -266,4 +280,65 @@ function App() {
   );
 }
 
-export default App;
+function AppOpening() {
+  const [showOpening, setShowOpening] = useState(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+    try {
+      return window.sessionStorage.getItem('one-wish-opening-seen') !== '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (!showOpening) return;
+    try {
+      window.sessionStorage.setItem('one-wish-opening-seen', '1');
+    } catch {
+      setShowOpening(false);
+      return;
+    }
+    const dismiss = () => setShowOpening(false);
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onPreferenceChange = () => {
+      if (preference.matches) dismiss();
+    };
+    const timer = window.setTimeout(dismiss, 1400);
+    document.addEventListener('pointerdown', dismiss, { once: true });
+    document.addEventListener('keydown', dismiss, { once: true });
+    preference.addEventListener('change', onPreferenceChange);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', dismiss);
+      preference.removeEventListener('change', onPreferenceChange);
+    };
+  }, [showOpening]);
+
+  return (
+    <>
+      <App />
+      {showOpening && (
+        <div
+          className="app-opening"
+          aria-hidden="true"
+          onAnimationEnd={event => {
+            if (event.target === event.currentTarget && event.animationName === 'willow-opening-away') {
+              setShowOpening(false);
+            }
+          }}
+        >
+          <div className="opening-brand">
+            <div className="opening-wordmark">
+              <span>One</span>{' '}<span>Wish</span>{' '}<span>Willow</span>
+            </div>
+            <div className="opening-rule" />
+            <p>Dream. Plan. Remember.</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default AppOpening;
