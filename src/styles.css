@@ -221,9 +221,10 @@ button {
 
 .login-screen {
   min-height: 100vh;
+  min-height: min(100vh, 100svh);
   display: grid;
   place-items: center;
-  padding: 32px;
+  padding: 16px 24px;
   background-color: #182b36;
   background-image: url('/auth-background.png');
   background-position: center;
@@ -316,6 +317,7 @@ button {
 
 .google-sign-in {
   display: grid;
+  min-height: 44px;
   justify-items: center;
   gap: 8px;
   width: 100%;
@@ -371,6 +373,50 @@ button {
   color: var(--text-secondary);
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.login-card-landscape {
+  padding: 24px;
+  gap: 12px;
+}
+
+.login-card-landscape label,
+.login-card-landscape .auth-field {
+  gap: 6px;
+}
+
+.login-card-landscape input {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+
+.login-card-landscape > button {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.login-card-landscape .text-button {
+  min-height: 32px;
+  padding: 4px 8px;
+}
+
+.login-card-landscape .login-brand span {
+  font-size: 1.75rem;
+}
+
+.login-card-landscape .login-divider {
+  margin: 0;
+}
+
+@media (max-height: 700px) and (min-width: 601px) {
+  .login-card-landscape {
+    padding: 20px;
+    gap: 8px;
+  }
+
+  .login-card-landscape .login-brand span {
+    font-size: 1.5rem;
+  }
 }
 
 .text-button {
@@ -3250,27 +3296,22 @@ button:hover,
 .login-divider {
   display: flex;
   align-items: center;
-  margin: 2rem 0 1rem 0;
-  gap: 1rem;
+  margin: 8px 0;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
-.login-divider span {
+.login-divider::before,
+.login-divider::after {
+  content: '';
   flex: 1;
   height: 1px;
   background: var(--border);
-  position: relative;
 }
 
-.login-divider span::before {
-  content: attr(data-content);
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--surface);
-  padding: 0 0.5rem;
-  color: var(--text-muted);
-  font-size: 0.85rem;
+.login-divider span {
+  flex-shrink: 0;
 }
 
 .admin-access-btn {
