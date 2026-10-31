@@ -188,6 +188,7 @@ function App() {
         onRegister={handleRegister}
         onGoogleLogin={handleGoogleLogin}
         onSwitchToLogin={switchToLogin}
+        onSwitchToLanding={switchToLanding}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -197,6 +198,7 @@ function App() {
         onGoogleLogin={handleGoogleLogin}
         onSwitchToRegister={switchToRegister}
         onSwitchToAdminLogin={() => setAuthMode('admin-login')}
+        onSwitchToLanding={switchToLanding}
         theme={theme}
         onToggleTheme={toggleTheme}
       />

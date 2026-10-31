@@ -6,11 +6,12 @@ interface RegisterPageProps {
   onRegister: (username: string, email: string, password: string) => Promise<string | null>;
   onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
   onSwitchToLogin: () => void;
+  onSwitchToLanding: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }
 
-export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogin, theme, onToggleTheme }: RegisterPageProps) {
+export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogin, onSwitchToLanding, theme, onToggleTheme }: RegisterPageProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -59,6 +60,9 @@ export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogi
   return (
     <main className="login-screen">
       <form className="login-card" onSubmit={handleSubmit}>
+        <button type="button" className="text-button" onClick={onSwitchToLanding}>
+          Go to landing page
+        </button>
         <div className="login-brand">
           <span>One Wish Willow</span>
           <p>Create your account and start building your wish world.</p>

@@ -7,11 +7,12 @@ interface LoginPageProps {
   onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
   onSwitchToRegister: () => void;
   onSwitchToAdminLogin: () => void;
+  onSwitchToLanding: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }
 
-export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, onSwitchToAdminLogin, theme, onToggleTheme }: LoginPageProps) {
+export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, onSwitchToAdminLogin, onSwitchToLanding, theme, onToggleTheme }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,6 +37,9 @@ export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, 
   return (
     <main className="login-screen">
       <form className="login-card login-card-landscape" onSubmit={handleSubmit}>
+        <button type="button" className="text-button" onClick={onSwitchToLanding}>
+          Go to landing page
+        </button>
         <div className="login-brand">
           <span>One Wish Willow</span>
           <p>Sign in to access your wishes, calendar, and weather dreams.</p>

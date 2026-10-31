@@ -107,6 +107,8 @@ App Loads → Landing Page
     Dashboard (after login)
 ```
 
+The login and register screens include a "Go to landing page" button to return to the public landing page without signing in, creating an account, or submitting either form.
+
 ## Colors & Theme Integration
 
 The landing page uses your existing design system:
