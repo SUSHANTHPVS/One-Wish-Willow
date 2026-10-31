@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Route, Routes, NavLink, Navigate } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import CalendarPage from './pages/CalendarPage';
 import WeatherPage from './pages/WeatherPage';
@@ -61,7 +62,7 @@ function App() {
       return null;
     }
   });
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'admin-login'>('login');
+  const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register' | 'admin-login'>('landing');
   const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
 
   useEffect(() => {
@@ -138,16 +139,16 @@ function App() {
     setAuthMode('login');
   }
 
-  function switchToRegister() {
-    setAuthMode('register');
-  }
-
-  function switchToAdminLogin() {
-    setAuthMode('admin-login');
-  }
-
   function switchToLogin() {
     setAuthMode('login');
+  }
+
+  function switchToLanding() {
+    setAuthMode('landing');
+  }
+
+  function switchToRegister() {
+    setAuthMode('register');
   }
 
   function toggleTheme() {
@@ -169,7 +170,13 @@ function App() {
 
   // Regular user authentication
   if (!authSession) {
-    return authMode === 'admin-login' ? (
+    return authMode === 'landing' ? (
+      <LandingPage
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onGetStarted={() => setAuthMode('login')}
+      />
+    ) : authMode === 'admin-login' ? (
       <AdminLoginPage
         onAdminLogin={handleAdminLogin}
         onSwitchToUserLogin={switchToLogin}
@@ -189,7 +196,7 @@ function App() {
         onLogin={handleLogin}
         onGoogleLogin={handleGoogleLogin}
         onSwitchToRegister={switchToRegister}
-        onSwitchToAdminLogin={switchToAdminLogin}
+        onSwitchToAdminLogin={() => setAuthMode('admin-login')}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
