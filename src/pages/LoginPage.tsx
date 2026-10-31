@@ -2,7 +2,6 @@ import { FormEvent, useState } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import GoogleSignIn from '../components/GoogleSignIn';
 import BrandLogo from '../components/BrandLogo';
-import PageTitle from '../components/PageTitle';
 
 interface LoginPageProps {
   onLogin: (name: string, password: string) => Promise<string | null>;
@@ -43,7 +42,7 @@ export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, 
         </button>
         <div className="login-brand">
           <BrandLogo decorative />
-          <PageTitle topic="login" illustrated><span>One Wish Willow</span></PageTitle>
+          <span>One Wish Willow</span>
           <p>Sign in to access your wishes, calendar, and weather dreams.</p>
         </div>
 

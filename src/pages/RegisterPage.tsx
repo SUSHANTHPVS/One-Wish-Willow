@@ -2,7 +2,6 @@ import { FormEvent, useState } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import GoogleSignIn from '../components/GoogleSignIn';
 import BrandLogo from '../components/BrandLogo';
-import PageTitle from '../components/PageTitle';
 
 interface RegisterPageProps {
   onRegister: (username: string, email: string, password: string) => Promise<string | null>;
@@ -65,7 +64,7 @@ export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogi
         </button>
         <div className="login-brand">
           <BrandLogo decorative />
-          <PageTitle topic="register" illustrated><span>One Wish Willow</span></PageTitle>
+          <span>One Wish Willow</span>
           <p>Create your account and start building your wish world.</p>
         </div>
 
