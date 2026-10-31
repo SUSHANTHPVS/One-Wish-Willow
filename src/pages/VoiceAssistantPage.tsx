@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 interface VoiceAssistantPageProps {
   currentUser: string;
@@ -82,9 +84,10 @@ export default function VoiceAssistantPage({ currentUser }: VoiceAssistantPagePr
     <section className="page-card voice-assistant-page">
       <div className="page-header">
         <div>
-          <h2>Voice Assistant</h2>
+          <PageTitle topic="voice"><h2>Voice Assistant</h2></PageTitle>
           <p>Speak or type a request and let the app answer you out loud.</p>
         </div>
+        <PageIllustration topic="voice" />
       </div>
 
       <div className="calendar-form">

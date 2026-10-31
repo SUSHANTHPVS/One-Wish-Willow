@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 import { apiCreateWish, apiDeleteWish, apiGetWishes, apiUpdateWish } from '../api';
 
 interface WishItem {
@@ -191,9 +193,10 @@ export default function WishListPage({ token }: WishListPageProps) {
     <section className="page-card wishlist-page">
       <div className="page-header">
         <div>
-          <h2>✨ Wish List</h2>
+          <PageTitle topic="goals"><h2>Wish List</h2></PageTitle>
           <p>Track your goals, celebrate progress, and complete every dream step by step.</p>
         </div>
+        <PageIllustration topic="goals" />
       </div>
 
       {celebration && <div className="success-banner">🎉 {celebration}</div>}

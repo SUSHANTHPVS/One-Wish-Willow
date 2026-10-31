@@ -1,6 +1,8 @@
 import { FormEvent, useState } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import GoogleSignIn from '../components/GoogleSignIn';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface LoginPageProps {
   onLogin: (name: string, password: string) => Promise<string | null>;
@@ -8,11 +10,10 @@ interface LoginPageProps {
   onSwitchToRegister: () => void;
   onSwitchToAdminLogin: () => void;
   onSwitchToLanding: () => void;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
+  notice?: string | null;
 }
 
-export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, onSwitchToAdminLogin, onSwitchToLanding, theme, onToggleTheme }: LoginPageProps) {
+export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, onSwitchToAdminLogin, onSwitchToLanding, notice }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -41,16 +42,12 @@ export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, 
           Go to landing page
         </button>
         <div className="login-brand">
-          <span>One Wish Willow</span>
+          <BrandLogo decorative />
+          <PageTitle topic="login" illustrated><span>One Wish Willow</span></PageTitle>
           <p>Sign in to access your wishes, calendar, and weather dreams.</p>
         </div>
 
-        <div className="login-theme-toggle">
-          <span>{theme === 'dark' ? 'Moon mode' : 'Sun mode'}</span>
-          <button type="button" className="text-button" onClick={onToggleTheme}>
-            Switch to {theme === 'dark' ? 'Sun' : 'Moon'}
-          </button>
-        </div>
+        {notice && <p className="account-notice" role="status">{notice}</p>}
 
         <label>
           Username or Email
@@ -78,7 +75,7 @@ export default function LoginPage({ onLogin, onGoogleLogin, onSwitchToRegister, 
         <button type="submit">Login</button>
 
         <div className="login-divider"><span>or</span></div>
-        <GoogleSignIn onGoogleLogin={onGoogleLogin} theme={theme} />
+        <GoogleSignIn onGoogleLogin={onGoogleLogin} />
 
         <p className="login-note">
           New to One Wish Willow?{' '}

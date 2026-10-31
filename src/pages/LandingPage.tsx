@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Zap, Brain, Music, Target, Users } from 'lucide-react';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface LandingPageProps {
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
   onGetStarted: () => void;
 }
 
-export default function LandingPage({ theme, onToggleTheme, onGetStarted }: LandingPageProps) {
+export default function LandingPage({ onGetStarted }: LandingPageProps) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -24,19 +24,15 @@ export default function LandingPage({ theme, onToggleTheme, onGetStarted }: Land
       {/* Navigation Header */}
       <nav className={`landing-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="landing-nav-content">
-          <div className="landing-logo">
+          <div className="landing-logo brand-lockup">
+            <BrandLogo decorative />
+            <div>
             <span className="logo-accent">O</span>ne{' '}
             <span className="logo-accent">W</span>ish{' '}
             <span className="logo-accent">W</span>illow
+            </div>
           </div>
           <div className="landing-nav-actions">
-            <button 
-              className="theme-toggle-button" 
-              onClick={onToggleTheme}
-              type="button"
-            >
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
             <button 
               className="primary-button nav-button"
               onClick={onGetStarted}
@@ -51,10 +47,10 @@ export default function LandingPage({ theme, onToggleTheme, onGetStarted }: Land
       {/* Hero Section */}
       <section className="landing-hero">
         <div className="hero-content">
-          <h1 className="hero-title">
+          <PageTitle topic="home"><h1 className="hero-title">
             Dream. Plan.
             <span className="hero-highlight"> Remember.</span>
-          </h1>
+          </h1></PageTitle>
           <p className="hero-subtitle">
             Your personal wellness companion for setting goals, staying motivated, and achieving balance in life.
           </p>
@@ -77,7 +73,7 @@ export default function LandingPage({ theme, onToggleTheme, onGetStarted }: Land
         </div>
         <div className="hero-visual">
           <div className="hero-illustration">
-            <div className="willow-icon">🌿</div>
+            <BrandLogo size="large" />
             <div className="stars-background">
               {[...Array(20)].map((_, i) => (
                 <div key={i} className="star" style={{
@@ -222,6 +218,7 @@ export default function LandingPage({ theme, onToggleTheme, onGetStarted }: Land
       <footer className="landing-footer">
         <div className="footer-content">
           <div className="footer-section">
+            <BrandLogo />
             <h4>One Wish Willow</h4>
             <p>Your personal wellness companion for setting goals and staying motivated.</p>
           </div>
@@ -230,16 +227,16 @@ export default function LandingPage({ theme, onToggleTheme, onGetStarted }: Land
             <ul>
               <li><Link to="/terms">Terms & Conditions</Link></li>
               <li><Link to="/privacy">Privacy Policy</Link></li>
-              <li><a href="#contact">Contact Us</a></li>
+              <li><Link to="/contact">Contact Us</Link></li>
             </ul>
           </div>
           <div className="footer-section">
             <h4>Features</h4>
             <ul>
-              <li><a href="#goals">Goal Setting</a></li>
-              <li><a href="#fitness">Fitness Tracking</a></li>
-              <li><a href="#mental-health">Mental Health</a></li>
-              <li><a href="#music">Music</a></li>
+              <li><Link to="/features/goals">Goal Setting</Link></li>
+              <li><Link to="/features/fitness">Fitness Tracking</Link></li>
+              <li><Link to="/features/mental-health">Mental Health</Link></li>
+              <li><Link to="/features/music">Music</Link></li>
             </ul>
           </div>
         </div>

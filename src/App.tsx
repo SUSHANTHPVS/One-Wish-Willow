@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Route, Routes, NavLink, Navigate } from 'react-router-dom';
+import { Route, Routes, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import HomePage from './pages/HomePage';
 import CalendarPage from './pages/CalendarPage';
@@ -17,11 +17,18 @@ import WishListPage from './pages/WishListPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import TermsAndConditionsPage from './pages/TermsAndConditionsPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ContactPage from './pages/ContactPage';
+import GoalSettingInfoPage from './pages/GoalSettingInfoPage';
+import FitnessInfoPage from './pages/FitnessInfoPage';
+import MentalHealthInfoPage from './pages/MentalHealthInfoPage';
+import MusicInfoPage from './pages/MusicInfoPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import NotificationCenter from './components/NotificationCenter';
 import UserMenu from './components/UserMenu';
-import { apiLogin, apiRegister, apiAdminLogin, apiGoogleLogin } from './api';
+import BrandLogo from './components/BrandLogo';
+import { apiLogin, apiRegister, apiAdminLogin, apiGoogleLogin, AccountDeletionAcknowledgement } from './api';
 
 interface AuthSession {
   username: string;
@@ -32,18 +39,12 @@ interface AuthSession {
 const USER_STORAGE_KEY = 'one-wish-user';
 const ADMIN_STORAGE_KEY = 'one-wish-admin';
 const THEME_STORAGE_KEY = 'one-wish-theme';
+const PUBLIC_INFO_PATHS = ['/terms', '/privacy', '/contact', '/features/goals', '/features/fitness', '/features/mental-health', '/features/music'];
 
-
-function loadTheme() {
-  if (typeof window === 'undefined') return 'dark' as const;
-  try {
-    return (window.localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark') || 'dark';
-  } catch {
-    return 'dark';
-  }
-}
 
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [authSession, setAuthSession] = useState<AuthSession | null>(() => {
     if (typeof window === 'undefined') return null;
     try {
@@ -63,7 +64,16 @@ function App() {
     }
   });
   const [authMode, setAuthMode] = useState<'landing' | 'login' | 'register' | 'admin-login'>('landing');
-  const [theme, setTheme] = useState<'light' | 'dark'>(loadTheme);
+  const [accountNotice, setAccountNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!PUBLIC_INFO_PATHS.includes(location.pathname)) return;
+    if (location.hash) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView();
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     if (authSession) {
@@ -82,16 +92,36 @@ function App() {
   }, [adminSession]);
 
   useEffect(() => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    document.body.classList.toggle('theme-light', theme === 'light');
-    document.body.classList.toggle('theme-dark', theme === 'dark');
-  }, [theme]);
+    window.localStorage.removeItem(THEME_STORAGE_KEY);
+    document.body.classList.add('theme-light');
+    document.body.classList.remove('theme-dark');
+  }, []);
+
+  useEffect(() => {
+    const onSessionEnded = (event: Event) => {
+      if (event instanceof CustomEvent && event.detail === authSession?.token) {
+        setAuthSession(null);
+        setAuthMode('login');
+        setAccountNotice('Your session has ended. Please sign in again.');
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === USER_STORAGE_KEY && event.newValue === null) setAuthSession(null);
+    };
+    window.addEventListener('one-wish-session-ended', onSessionEnded);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('one-wish-session-ended', onSessionEnded);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [authSession?.token]);
 
   async function handleLogin(username: string, password: string) {
     try {
       const result = await apiLogin(username, password);
       const session = { username: result.user.username, token: result.token };
       setAuthSession(session);
+      setAccountNotice(result.message || null);
       return null;
     } catch (error) {
       return (error as Error).message;
@@ -103,6 +133,7 @@ function App() {
       const result = await apiRegister(username, email, password);
       const session = { username: result.user.username, token: result.token };
       setAuthSession(session);
+      setAccountNotice(null);
       return null;
     } catch (error) {
       return (error as Error).message;
@@ -113,6 +144,7 @@ function App() {
     try {
       const result = await apiGoogleLogin(credential, termsAccepted);
       setAuthSession({ username: result.user.username, token: result.token });
+      setAccountNotice(result.message || null);
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : 'Google sign-in failed.';
@@ -132,6 +164,15 @@ function App() {
 
   function handleLogout() {
     setAuthSession(null);
+    setAccountNotice(null);
+  }
+
+  function handleAccountScheduled(acknowledgement: AccountDeletionAcknowledgement) {
+    window.localStorage.removeItem(USER_STORAGE_KEY);
+    setAuthSession(null);
+    setAuthMode('login');
+    setAccountNotice(acknowledgement.message);
+    navigate('/');
   }
 
   function handleAdminLogout() {
@@ -151,8 +192,32 @@ function App() {
     setAuthMode('register');
   }
 
-  function toggleTheme() {
-    setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+  if (PUBLIC_INFO_PATHS.includes(location.pathname)) {
+    return (
+      <main className="public-info-page">
+        <nav className="public-info-nav" aria-label="Information page navigation">
+          <button type="button" className="text-button" onClick={() => {
+            switchToLanding();
+            navigate('/');
+          }}>
+            <BrandLogo decorative />
+            {authSession || adminSession ? 'Go to home page' : 'Go to landing page'}
+          </button>
+          <NavLink to="/terms">Terms &amp; Conditions</NavLink>
+          <NavLink to="/privacy">Privacy Policy</NavLink>
+          <NavLink to="/contact">Contact Us</NavLink>
+        </nav>
+        <Routes>
+          <Route path="/terms" element={<TermsAndConditionsPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/features/goals" element={<GoalSettingInfoPage />} />
+          <Route path="/features/fitness" element={<FitnessInfoPage />} />
+          <Route path="/features/mental-health" element={<MentalHealthInfoPage />} />
+          <Route path="/features/music" element={<MusicInfoPage />} />
+        </Routes>
+      </main>
+    );
   }
 
   // Admin session check
@@ -172,16 +237,12 @@ function App() {
   if (!authSession) {
     return authMode === 'landing' ? (
       <LandingPage
-        theme={theme}
-        onToggleTheme={toggleTheme}
         onGetStarted={() => setAuthMode('login')}
       />
     ) : authMode === 'admin-login' ? (
       <AdminLoginPage
         onAdminLogin={handleAdminLogin}
         onSwitchToUserLogin={switchToLogin}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
     ) : authMode === 'register' ? (
       <RegisterPage
@@ -189,8 +250,6 @@ function App() {
         onGoogleLogin={handleGoogleLogin}
         onSwitchToLogin={switchToLogin}
         onSwitchToLanding={switchToLanding}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
     ) : (
       <LoginPage
@@ -199,8 +258,7 @@ function App() {
         onSwitchToRegister={switchToRegister}
         onSwitchToAdminLogin={() => setAuthMode('admin-login')}
         onSwitchToLanding={switchToLanding}
-        theme={theme}
-        onToggleTheme={toggleTheme}
+        notice={accountNotice}
       />
     );
   }
@@ -208,13 +266,16 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
+        <div className="brand-lockup">
+          <BrandLogo decorative />
+          <div>
           <h1>
             <span className="title-accent">O</span>ne{' '}
             <span className="title-accent">W</span>ish{' '}
             <span className="title-accent">W</span>illow
           </h1>
           <p>Welcome back, {authSession.username}. Dream. Plan. Remember.</p>
+          </div>
         </div>
         <div className="header-navigation">
         <nav className="main-nav" aria-label="Main navigation">
@@ -252,15 +313,13 @@ function App() {
             Statistics
           </NavLink>
           <NotificationCenter token={authSession.token} />
-          <button className="theme-toggle-button" onClick={toggleTheme} type="button">
-            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-          </button>
         </nav>
         <UserMenu username={authSession.username} token={authSession.token} onLogout={handleLogout} />
         </div>
       </header>
 
       <main className="app-content">
+        {accountNotice && <p className="account-notice" role="status">{accountNotice}</p>}
         <Routes>
           <Route path="/" element={<HomePage currentUser={authSession.username} />} />
           <Route path="/calendar" element={<CalendarPage currentUser={authSession.username} token={authSession.token} />} />
@@ -272,10 +331,10 @@ function App() {
           <Route path="/addiction-help" element={<AddictionHelpPage currentUser={authSession.username} />} />
           <Route path="/translate" element={<TranslatePage currentUser={authSession.username} token={authSession.token} />} />
           <Route path="/wish-list" element={<WishListPage token={authSession.token} />} />
-          <Route path="/profile" element={<ProfilePage currentUser={authSession.username} token={authSession.token} />} />
+          <Route path="/profile" element={<ProfilePage currentUser={authSession.username} token={authSession.token} onAccountScheduled={handleAccountScheduled} />} />
           <Route path="/statistics" element={<StatisticsPage currentUser={authSession.username} token={authSession.token} />} />
           <Route path="/terms" element={<TermsAndConditionsPage />} />
-          <Route path="/privacy" element={<TermsAndConditionsPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

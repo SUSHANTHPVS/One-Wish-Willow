@@ -31,10 +31,32 @@ import { buildStatistics } from './statistics.js';
 import { createGoogleAuthHandler } from './googleAuth.js';
 import { buildNotifications } from './notifications.js';
 import { normalizeProfilePicture } from './profilePicture.js';
+import { createAccountLifecycle, AccountLifecycleError } from './accountLifecycle.js';
 
 dotenv.config();
 
 const app = express();
+const accountLifecycle = createAccountLifecycle({
+  userModel: User,
+  ownedModels: [
+    ...[Notification, Wish, Event, FitnessEntry, MusicItem, MentalHealthEntry, AddictionEntry, Translation]
+      .map(model => ({ model, field: 'user' })),
+    ...[MoodEntry, JournalEntry, GratitudeEntry, MeditationSession, HabitTracker, WaterIntake, SleepEntry]
+      .map(model => ({ model, field: 'userId' })),
+  ],
+});
+let cleanupRunning = false;
+async function cleanupExpiredAccounts() {
+  if (cleanupRunning) return;
+  cleanupRunning = true;
+  try {
+    await accountLifecycle.deleteExpiredAccounts();
+  } catch (error) {
+    console.error('Account deletion cleanup failed; it will be retried.', error);
+  } finally {
+    cleanupRunning = false;
+  }
+}
 const requestedPort = Number(process.env.PORT) || 4000;
 const PORT = Number.isNaN(requestedPort) ? 4000 : requestedPort;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/one-wish-willow';
@@ -74,6 +96,10 @@ function startServer() {
   console.log(`Attempting to start server on port ${PORT}`);
   const server = app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
+    cleanupExpiredAccounts();
+    const cleanupTimer = setInterval(cleanupExpiredAccounts, 60000);
+    cleanupTimer.unref();
+    server.on('close', () => clearInterval(cleanupTimer));
   });
 
   server.on('error', (error) => {
@@ -86,18 +112,31 @@ function startServer() {
   });
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
   const token = header.split(' ')[1];
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  try {
+    if (!mongoose.isValidObjectId(payload.id)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    await accountLifecycle.verifySession(payload);
     req.user = payload;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    if (error instanceof AccountLifecycleError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    console.error('Unable to verify account session', error);
+    return res.status(503).json({ message: 'Unable to verify your account. Please try again.' });
   }
 }
 
@@ -159,6 +198,7 @@ app.post('/api/auth/google', createGoogleAuthHandler({
   googleClient: new OAuth2Client(GOOGLE_CLIENT_ID),
   clientId: GOOGLE_CLIENT_ID,
   jwtSecret: JWT_SECRET,
+  resolveAccountLogin: accountLifecycle.login,
 }));
 
 app.post('/api/auth/login', async (req, res) => {
@@ -185,8 +225,31 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ message: 'Invalid credentials' });
   }
   
-  const token = jwt.sign({ id: user._id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: { username: user.username, email: user.email, bio: user.bio } });
+  try {
+    const { user: activeUser, restored } = await accountLifecycle.login(user._id);
+    const token = jwt.sign({
+      id: activeUser._id, username: activeUser.username, sessionVersion: activeUser.sessionVersion || 0,
+    }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      token, user: { username: activeUser.username, email: activeUser.email, bio: activeUser.bio },
+      message: restored ? 'Welcome back! Account deletion has been cancelled. You can use your account normally.' : null,
+    });
+  } catch (error) {
+    if (error instanceof AccountLifecycleError) return res.status(error.status).json({ message: error.message });
+    console.error('Unable to restore account during sign-in', error);
+    res.status(500).json({ message: 'Unable to complete sign-in. Please try again.' });
+  }
+});
+
+app.post('/api/profile/account-deletion', authMiddleware, async (req, res) => {
+  try {
+    const result = await accountLifecycle.schedule(req.user.id, req.body?.action, req.body?.confirmed);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof AccountLifecycleError) return res.status(error.status).json({ message: error.message });
+    console.error('Unable to schedule account deletion', error);
+    res.status(500).json({ message: 'Unable to schedule account deletion. Please try again.' });
+  }
 });
 
 // Admin Login Endpoint
@@ -1092,26 +1155,11 @@ app.delete('/api/admin/users/:id', adminMiddleware, async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // Delete user and all their associated data
-    await User.findByIdAndDelete(userId);
-    await Notification.deleteMany({ user: userId });
-    await Wish.deleteMany({ userId });
-    await Event.deleteMany({ userId });
-    await FitnessEntry.deleteMany({ userId });
-    await MusicItem.deleteMany({ userId });
-    await MentalHealthEntry.deleteMany({ userId });
-    await AddictionEntry.deleteMany({ userId });
-    await Translation.deleteMany({ userId });
-    await MoodEntry.deleteMany({ userId });
-    await JournalEntry.deleteMany({ userId });
-    await GratitudeEntry.deleteMany({ userId });
-    await MeditationSession.deleteMany({ userId });
-    await HabitTracker.deleteMany({ userId });
-    await WaterIntake.deleteMany({ userId });
-    await SleepEntry.deleteMany({ userId });
+    await accountLifecycle.deleteImmediately(userId);
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
+    if (error instanceof AccountLifecycleError) return res.status(error.status).json({ message: error.message });
     res.status(500).json({ message: error.message });
   }
 });

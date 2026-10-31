@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 import { apiTranslateText } from '../api';
 
 const languages = ['English', 'Hindi', 'Tamil', 'Telugu', 'Marathi', 'Kannada', 'Bengali', 'Gujarati'] as const;
@@ -197,9 +199,10 @@ export default function TranslatePage({ currentUser, token }: TranslatePageProps
     <section className="page-card translate-page">
       <div className="page-header">
         <div>
-          <h2>🌍 Translate</h2>
+          <PageTitle topic="languages"><h2>Translate</h2></PageTitle>
           <p>Translate phrases between 6+ Indian languages instantly.</p>
         </div>
+        <PageIllustration topic="languages" />
       </div>
 
       <div className="language-pair">

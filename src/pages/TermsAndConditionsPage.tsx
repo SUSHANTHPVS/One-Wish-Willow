@@ -1,9 +1,16 @@
+import { Link } from 'react-router-dom';
+import PageTitle from '../components/PageTitle';
+
 export default function TermsAndConditionsPage() {
   return (
     <section className="terms-page">
       <div className="terms-container">
-        <h1>📋 Terms and Conditions</h1>
-        <p className="last-updated">Last Updated: July 2026</p>
+        <PageTitle topic="terms" illustrated><h1>Terms and Conditions</h1></PageTitle>
+        <p className="last-updated">Last Updated: October 31, 2026</p>
+        <p>
+          One Wish Willow brings goal planning, activity logging, mood check-ins, and music discovery
+          together in one personal wellness space. Read the terms for using the website below.
+        </p>
 
         <section className="terms-section">
           <h2>1. Acceptance of Terms</h2>
@@ -72,7 +79,8 @@ export default function TermsAndConditionsPage() {
         <section className="terms-section">
           <h2>8. Data Privacy</h2>
           <p>
-            One Wish Willow collects and processes personal data in accordance with applicable privacy laws. Your personal information will be used only for the purposes stated in our Privacy Policy. We are committed to maintaining the confidentiality and security of your personal information.
+            Read our <Link to="/privacy">Privacy Policy</Link> for information about account data,
+            browser storage, and third-party services used by the website.
           </p>
         </section>
 
@@ -92,7 +100,7 @@ export default function TermsAndConditionsPage() {
         <section className="terms-section">
           <h2>10. Account Termination</h2>
           <p>
-            One Wish Willow reserves the right to suspend or terminate accounts that violate these terms and conditions. Users may also voluntarily request account deletion through their profile settings.
+            One Wish Willow reserves the right to suspend or terminate accounts that violate these terms and conditions. You may request account deletion or temporary termination in Profile under Data &amp; Account after explicitly confirming your choice. Both requests sign you out and schedule permanent deletion after 7 days. Signing in before the deadline cancels deletion and restores your account. After the deadline, recovery is no longer available and the server removes your account and associated records on its next cleanup run.
           </p>
         </section>
 
@@ -127,12 +135,8 @@ export default function TermsAndConditionsPage() {
         <section className="terms-section">
           <h2>15. Contact Information</h2>
           <p>
-            If you have any questions about these Terms and Conditions, please contact us at:
+            If you have any questions about these Terms and Conditions, visit <Link to="/contact">Contact Us</Link>.
           </p>
-          <div className="contact-info">
-            <p><strong>Email:</strong> support@onewishwillow.com</p>
-            <p><strong>Website:</strong> www.onewishwillow.com</p>
-          </div>
         </section>
 
         <section className="terms-section copyright-section">

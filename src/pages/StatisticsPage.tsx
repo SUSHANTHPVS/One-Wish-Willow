@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 import { apiGetStatistics, type UserStatistics } from '../api';
 
 interface StatisticsPageProps {
@@ -50,7 +52,7 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
   if (!data) {
     return (
       <section className="page-card statistics-card" aria-busy={!error}>
-        <h2>Statistics &amp; Analytics</h2>
+        <PageTitle topic="statistics" illustrated><h2>Statistics &amp; Analytics</h2></PageTitle>
         {error ? <p role="alert">{error}</p> : <p role="status">Loading statistics...</p>}
         {error && <button type="button" onClick={() => setRetry(value => value + 1)}>Retry</button>}
       </section>
@@ -85,10 +87,11 @@ export default function StatisticsPage({ currentUser, token }: StatisticsPagePro
     <section className="page-card statistics-card">
       <div className="page-header">
         <div>
-          <h2>📊 Statistics & Analytics</h2>
+          <PageTitle topic="statistics"><h2>Statistics & Analytics</h2></PageTitle>
           <p>{currentUser}'s saved activity · UTC</p>
           <p role="status">Updated {new Date(data.updatedAt).toLocaleTimeString()}</p>
         </div>
+        <PageIllustration topic="statistics" />
       </div>
       {error && <p role="alert">Refresh failed: {error} Showing the last successful update.</p>}
 

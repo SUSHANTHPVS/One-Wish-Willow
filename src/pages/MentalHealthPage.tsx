@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 interface MentalEntry {
   id: string;
@@ -121,9 +123,10 @@ export default function MentalHealthPage({ currentUser }: MentalHealthPageProps)
     <section className="page-card mental-health-page">
       <div className="page-header">
         <div>
-          <h2>💭 Mental Health Check-in</h2>
+          <PageTitle topic="mental-health"><h2>Mental Health Check-in</h2></PageTitle>
           <p>Log your mood and stress levels. Small steps lead to big changes.</p>
         </div>
+        <PageIllustration topic="mental-health" />
       </div>
 
       <div className="stats-row">

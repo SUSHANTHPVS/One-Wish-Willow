@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 interface FitnessEntry {
   id: string;
@@ -181,9 +183,10 @@ export default function FitnessPage({ currentUser }: FitnessPageProps) {
     <section className="page-card fitness-page">
       <div className="page-header">
         <div>
-          <h2>Fitness & Wellness</h2>
+          <PageTitle topic="fitness"><h2>Fitness & Wellness</h2></PageTitle>
           <p>Set a goal, track workouts, and get coaching suggestions that match your energy and focus.</p>
         </div>
+        <PageIllustration topic="fitness" />
       </div>
 
       <div className="stats-row">

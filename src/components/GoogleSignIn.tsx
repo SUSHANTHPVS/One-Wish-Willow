@@ -4,12 +4,11 @@ import { LogIn } from 'lucide-react';
 
 interface GoogleSignInProps {
   onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
-  theme: 'dark' | 'light';
   requireTerms?: boolean;
   termsAccepted?: boolean;
 }
 
-export default function GoogleSignIn({ onGoogleLogin, theme, requireTerms = false, termsAccepted = false }: GoogleSignInProps) {
+export default function GoogleSignIn({ onGoogleLogin, requireTerms = false, termsAccepted = false }: GoogleSignInProps) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(200);
@@ -43,7 +42,7 @@ export default function GoogleSignIn({ onGoogleLogin, theme, requireTerms = fals
         <GoogleOAuthProvider clientId={clientId} onScriptLoadError={() => setError('Google sign-in could not load. Check your connection and try again.')}>
           <div className="google-sign-in-button" style={{ pointerEvents: busy ? 'none' : 'auto' }}>
             <GoogleLogin
-              theme={theme === 'dark' ? 'filled_black' : 'outline'}
+              theme="outline"
               size="large"
               shape="rectangular"
               text="continue_with"

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 const providers = ['Spotify', 'Apple Music', 'Gaana', 'Jio Saavn'] as const;
 
@@ -161,9 +163,10 @@ export default function MusicPage({ currentUser }: MusicPageProps) {
     <section className="page-card music-page">
       <div className="page-header">
         <div>
-          <h2>Music Hub</h2>
+          <PageTitle topic="music"><h2>Music Hub</h2></PageTitle>
           <p>Connect to your favorite music service and keep playlists and moods close to your routine.</p>
         </div>
+        <PageIllustration topic="music" />
       </div>
 
       <div className="stats-row">

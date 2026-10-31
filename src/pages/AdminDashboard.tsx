@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface User {
   _id: string;
@@ -110,7 +112,8 @@ export default function AdminDashboard({ adminUsername, token, onLogout }: Admin
     <div className="admin-dashboard">
       <div className="admin-header-section">
         <div className="admin-title">
-          <h1>🛡️ Admin Control Panel</h1>
+          <BrandLogo />
+          <PageTitle topic="admin" illustrated><h1>Admin Control Panel</h1></PageTitle>
           <p>Welcome, <strong>{adminUsername}</strong> • Administrative Access</p>
         </div>
         <button className="admin-logout-btn" onClick={onLogout}>

@@ -1,13 +1,13 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface AdminLoginPageProps {
   onAdminLogin: (username: string, password: string) => Promise<string | null>;
   onSwitchToUserLogin: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
 }
 
-export default function AdminLoginPage({ onAdminLogin, onSwitchToUserLogin, theme, onToggleTheme }: AdminLoginPageProps) {
+export default function AdminLoginPage({ onAdminLogin, onSwitchToUserLogin }: AdminLoginPageProps) {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -69,9 +69,10 @@ export default function AdminLoginPage({ onAdminLogin, onSwitchToUserLogin, them
 
       <div className="auth-card admin-login-card">
         <div className="auth-header">
-          <h1>
+          <BrandLogo />
+          <PageTitle topic="admin" illustrated><h1>
             <span className="admin-badge">🔐 ADMIN</span> Login
-          </h1>
+          </h1></PageTitle>
           <p>Administrative Portal Access</p>
         </div>
 
@@ -139,14 +140,6 @@ export default function AdminLoginPage({ onAdminLogin, onSwitchToUserLogin, them
             <li>📈 Monitor user activity and growth</li>
             <li>🔍 Search and filter user records</li>
           </ul>
-        </div>
-
-        <div className="auth-footer">
-          <div className="footer-actions">
-            <button className="theme-toggle" onClick={onToggleTheme} type="button">
-              {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
-            </button>
-          </div>
         </div>
 
         <div className="user-login-switch">

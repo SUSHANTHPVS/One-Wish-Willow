@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { apiGetProfile, apiUpdateProfile, apiUploadProfilePicture, apiRemoveProfilePicture } from '../api';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
+import { apiGetProfile, apiUpdateProfile, apiUploadProfilePicture, apiRemoveProfilePicture, apiScheduleAccountDeletion, AccountDeletionAcknowledgement } from '../api';
 
 interface ProfileState {
   username: string;
@@ -18,9 +20,10 @@ interface Session {
 interface ProfilePageProps {
   currentUser: string;
   token: string;
+  onAccountScheduled: (acknowledgement: AccountDeletionAcknowledgement) => void;
 }
 
-export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
+export default function ProfilePage({ currentUser, token, onAccountScheduled }: ProfilePageProps) {
   const [savedProfile, setSavedProfile] = useState<ProfileState>({
     username: currentUser,
     email: '',
@@ -60,6 +63,9 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [accountAction, setAccountAction] = useState<'delete' | 'terminate' | null>(null);
+  const [accountConfirmed, setAccountConfirmed] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -190,9 +196,18 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
     setSuccessMessage('Your data export will be sent to your email within 24 hours.');
   }
 
-  function handleDeleteAccount() {
-    if (confirm('Are you absolutely sure? This action cannot be undone. All your data will be permanently deleted.')) {
-      setSuccessMessage('Account deletion request submitted. Check your email to confirm.');
+  async function handleAccountAction() {
+    if (!accountAction || !accountConfirmed || accountBusy) return;
+    setAccountBusy(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const acknowledgement = await apiScheduleAccountDeletion(token, accountAction);
+      onAccountScheduled(acknowledgement);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to schedule account deletion.');
+    } finally {
+      setAccountBusy(false);
     }
   }
 
@@ -268,9 +283,10 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
     <section className="page-card profile-card">
       <div className="page-header">
         <div>
-          <h2>👤 My Account</h2>
+          <PageTitle topic="profile"><h2>My Account</h2></PageTitle>
           <p>Manage your profile, security, preferences and account settings.</p>
         </div>
+        <PageIllustration topic="profile" />
       </div>
 
       {loading && <p>Loading profile...</p>}
@@ -359,7 +375,7 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
                 {tab === 'password' && '🔐 Password'}
                 {tab === 'preferences' && '⚙️ Preferences'}
                 {tab === 'security' && '🛡️ Security'}
-                {tab === 'data' && '📊 Data'}
+                {tab === 'data' && '📊 Data & Account'}
               </button>
             ))}
           </div>
@@ -490,10 +506,7 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
 
               <div className="preference-section">
                 <h4>⚙️ Display</h4>
-                <label className="checkbox-label">
-                  <input type="checkbox" defaultChecked />
-                  Dark Mode
-                </label>
+                <p>The application uses light mode.</p>
                 <label className="checkbox-label">
                   <input type="checkbox" defaultChecked />
                   Compact View
@@ -590,13 +603,56 @@ export default function ProfilePage({ currentUser, token }: ProfilePageProps) {
                 <div className="data-item">
                   <div>
                     <h4>🗑️ Delete Account</h4>
-                    <p>Permanently delete your account and all associated data</p>
+                    <p>Schedule permanent deletion after 7 days. Logging in before the deadline cancels deletion.</p>
                   </div>
-                  <button className="delete-btn" onClick={handleDeleteAccount}>
+                  <button type="button" className="delete-btn" disabled={accountBusy} onClick={() => {
+                    setAccountAction('delete');
+                    setAccountConfirmed(false);
+                  }}>
                     Delete Account
                   </button>
                 </div>
               </div>
+
+              <div className="data-section">
+                <div className="data-item">
+                  <div>
+                    <h4>Temporarily Terminate Account</h4>
+                    <p>Take a break for up to 7 days. Log in before the deadline to restore your account; otherwise it will be permanently deleted.</p>
+                  </div>
+                  <button type="button" className="action-btn" disabled={accountBusy} onClick={() => {
+                    setAccountAction('terminate');
+                    setAccountConfirmed(false);
+                  }}>
+                    Temporarily Terminate Account
+                  </button>
+                </div>
+              </div>
+
+              {accountAction && (
+                <section className="account-confirmation" aria-labelledby="account-confirmation-title">
+                  <h4 id="account-confirmation-title">
+                    Confirm {accountAction === 'delete' ? 'account deletion' : 'temporary termination'}
+                  </h4>
+                  <p>You will be signed out immediately. Log in within 7 days to cancel deletion and use your account normally. After the deadline, your account and server-side data will be permanently deleted.</p>
+                  <p>Browser-local wellness records are not deleted by the server. You can clear this site's browser data separately.</p>
+                  <label className="terms-checkbox">
+                    <input type="checkbox" checked={accountConfirmed} disabled={accountBusy}
+                      onChange={event => setAccountConfirmed(event.target.checked)} />
+                    I understand and confirm this account request.
+                  </label>
+                  <div className="account-confirmation-actions">
+                    <button type="button" className="action-btn" disabled={accountBusy} onClick={() => {
+                      setAccountAction(null);
+                      setAccountConfirmed(false);
+                    }}>Cancel</button>
+                    <button type="button" className="delete-btn" disabled={!accountConfirmed || accountBusy} onClick={handleAccountAction}>
+                      {accountBusy ? 'Submitting...' : accountAction === 'delete' ? 'Confirm account deletion' : 'Confirm temporary termination'}
+                    </button>
+                  </div>
+                  {error && <p role="alert" className="login-error">{error}</p>}
+                </section>
+              )}
 
               <div className="data-info">
                 <h4>ℹ️ Account Information</h4>

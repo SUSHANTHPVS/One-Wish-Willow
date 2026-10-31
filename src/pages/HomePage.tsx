@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface HomePageProps {
   currentUser: string;
@@ -9,10 +11,10 @@ export default function HomePage({ currentUser }: HomePageProps) {
     <section className="page-card home-intro-card">
       <div className="page-header home-header">
         <div>
-          <h2>Welcome to One Wish Willow</h2>
+          <PageTitle topic="home"><h2>Welcome to One Wish Willow</h2></PageTitle>
           <p>Discover a caring wellness hub for your goals, mindset, and daily balance.</p>
         </div>
-        <img src="/weather-illustration.svg" alt="Wellness illustration" className="page-illustration" />
+        <BrandLogo size="large" />
       </div>
 
       <div className="feature-highlights">

@@ -9,7 +9,7 @@ A beautiful, impressive landing page has been added to your One Wish Willow appl
 - Modern, responsive design that showcases your application
 - Smooth animations and interactive elements
 - Professional sections:
-  - **Navigation Header**: Sticky header with logo, theme toggle, and "Get Started" button
+  - **Navigation Header**: Sticky header with logo and "Get Started" button
   - **Hero Section**: Eye-catching headline with call-to-action buttons
   - **Features Section**: 6 feature cards highlighting key capabilities
   - **More Features Section**: Additional benefits and features list
@@ -32,7 +32,7 @@ A beautiful, impressive landing page has been added to your One Wish Willow appl
   - Twinkling stars background
   - Bouncing feature cards
   - Smooth scroll effects
-- Theme support (dark and light modes)
+- Light-only styling matching the rest of the application
 - Professional color scheme matching your existing design
 
 ## Features Highlighted
@@ -112,11 +112,11 @@ The login and register screens include a "Go to landing page" button to return t
 ## Colors & Theme Integration
 
 The landing page uses your existing design system:
-- **Accent Color**: #78dfc3 (teal/green)
+- **Accent Color**: #087c67 (teal/green)
 - **Text Colors**: Matches your theme system
 - **Background**: Uses gradient background like rest of app
 - **Light Mode Support**: Fully styled for light theme
-- **Dark Mode Support**: Fully styled for dark theme
+- **Theme Selection**: Light mode only; no theme toggle is shown
 
 ## Animations & Interactions
 
@@ -194,7 +194,7 @@ Consider adding:
 4. **Interact**: 
    - Click "Get Started" to go to login
    - Click "Learn More" to scroll to features
-   - Toggle theme with sun/moon button
+   - Verify the page uses the application-wide light theme
    - Try responsive view on different screen sizes
 
 ## Deployment Notes

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
 
 interface WeatherData {
   temp: number;
@@ -204,7 +205,7 @@ export default function WeatherPage({ currentUser }: WeatherPageProps) {
     <section className={`page-card ${weatherPageClass}`}>
       <div className="page-header">
         <div>
-          <h2>Weather</h2>
+          <PageTitle topic="weather"><h2>Weather</h2></PageTitle>
           <p>Check today&apos;s conditions and keep your plans aligned.</p>
         </div>
         <img src="/weather-illustration.svg" alt="Weather illustration" className="page-illustration" />

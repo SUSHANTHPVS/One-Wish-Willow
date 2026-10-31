@@ -20,10 +20,13 @@ async function request(path: string, method = 'GET', body?: object, token?: stri
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      window.dispatchEvent(new CustomEvent('one-wish-session-ended', { detail: token }));
+    }
     throw new Error((data as any).message || 'Server error');
   }
 
-  if (method !== 'GET' && token) {
+  if (method !== 'GET' && token && path !== '/api/profile/account-deletion') {
     window.dispatchEvent(new Event('one-wish-data-changed'));
   }
 
@@ -66,6 +69,17 @@ function normalizeProfile(profile: UserProfile): UserProfile {
 
 export async function apiGetProfile(token: string): Promise<UserProfile> {
   return normalizeProfile(await request('/api/profile', 'GET', undefined, token));
+}
+
+export interface AccountDeletionAcknowledgement {
+  deletionDueAt: string;
+  message: string;
+}
+
+export async function apiScheduleAccountDeletion(
+  token: string, action: 'delete' | 'terminate',
+): Promise<AccountDeletionAcknowledgement> {
+  return request('/api/profile/account-deletion', 'POST', { action, confirmed: true }, token);
 }
 
 export interface UserStatistics {

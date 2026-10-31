@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 interface AddictionEntry {
   id: string;
@@ -133,9 +135,10 @@ export default function AddictionHelpPage({ currentUser }: AddictionHelpPageProp
     <section className="page-card addiction-page">
       <div className="page-header">
         <div>
-          <h2>💪 Addiction Recovery</h2>
+          <PageTitle topic="recovery"><h2>Addiction Recovery</h2></PageTitle>
           <p>Break unhealthy habits with support and progress tracking. You've got this!</p>
         </div>
+        <PageIllustration topic="recovery" />
       </div>
 
       <div className="stats-row">

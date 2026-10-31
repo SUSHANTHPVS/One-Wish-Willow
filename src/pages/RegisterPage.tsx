@@ -1,17 +1,17 @@
 import { FormEvent, useState } from 'react';
 import PasswordInput from '../components/PasswordInput';
 import GoogleSignIn from '../components/GoogleSignIn';
+import BrandLogo from '../components/BrandLogo';
+import PageTitle from '../components/PageTitle';
 
 interface RegisterPageProps {
   onRegister: (username: string, email: string, password: string) => Promise<string | null>;
   onGoogleLogin: (credential: string, termsAccepted: boolean) => Promise<string | null>;
   onSwitchToLogin: () => void;
   onSwitchToLanding: () => void;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
 }
 
-export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogin, onSwitchToLanding, theme, onToggleTheme }: RegisterPageProps) {
+export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogin, onSwitchToLanding }: RegisterPageProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -64,16 +64,11 @@ export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogi
           Go to landing page
         </button>
         <div className="login-brand">
-          <span>One Wish Willow</span>
+          <BrandLogo decorative />
+          <PageTitle topic="register" illustrated><span>One Wish Willow</span></PageTitle>
           <p>Create your account and start building your wish world.</p>
         </div>
 
-        <div className="login-theme-toggle">
-          <span>{theme === 'dark' ? 'Moon mode' : 'Sun mode'}</span>
-          <button type="button" className="text-button" onClick={onToggleTheme}>
-            Switch to {theme === 'dark' ? 'Sun' : 'Moon'}
-          </button>
-        </div>
 
         <label>
           Username
@@ -144,7 +139,6 @@ export default function RegisterPage({ onRegister, onGoogleLogin, onSwitchToLogi
         <div className="login-divider"><span>or</span></div>
         <GoogleSignIn
           onGoogleLogin={onGoogleLogin}
-          theme={theme}
           requireTerms
           termsAccepted={termsAccepted}
         />

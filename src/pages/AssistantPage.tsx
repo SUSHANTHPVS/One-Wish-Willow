@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 import { apiChatAssistant } from '../api';
 
 interface AssistantMessage {
@@ -142,9 +144,10 @@ export default function AssistantPage({ currentUser, token }: AssistantPageProps
     <section className="page-card assistant-page">
       <div className="page-header">
         <div>
-          <h2>Personal Assistant</h2>
+          <PageTitle topic="assistant"><h2>Personal Assistant</h2></PageTitle>
           <p>Quick advice, reminders, and support for daily focus. Your AI companion is here to help.</p>
         </div>
+        <PageIllustration topic="assistant" />
       </div>
 
       <div className="assistant-suggestions-row">

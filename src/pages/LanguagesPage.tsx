@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
+import PageIllustration from '../components/PageIllustration';
 
 const languages = ['English', 'Hindi', 'Spanish', 'French', 'German', 'Japanese'] as const;
 
@@ -49,9 +51,10 @@ export default function LanguagesPage({ currentUser }: LanguagesPageProps) {
     <section className="page-card languages-page">
       <div className="page-header">
         <div>
-          <h2>Multiple Languages</h2>
+          <PageTitle topic="languages"><h2>Multiple Languages</h2></PageTitle>
           <p>Choose a preferred language and explore common phrases in that language.</p>
         </div>
+        <PageIllustration topic="languages" />
       </div>
 
       <div className="calendar-form">

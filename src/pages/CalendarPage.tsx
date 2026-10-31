@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import PageTitle from '../components/PageTitle';
 import { apiDeleteEvent, apiGetEvents, apiSaveEvent, type StoredCalendarEvent } from '../api';
 
 const categories = ['Personal', 'Work', 'Health', 'Study', 'Dreams'] as const;
@@ -371,7 +372,7 @@ export default function CalendarPage({ currentUser, token }: CalendarPageProps) 
     <section className="page-card calendar-page" aria-busy={loading || saving}>
       <div className="page-header">
         <div>
-          <h2>Calendar & Reminders</h2>
+          <PageTitle topic="calendar"><h2>Calendar & Reminders</h2></PageTitle>
           <p>Schedule events, set reminders, and keep your wishes on track.</p>
         </div>
         <img src="/calendar-illustration.svg" alt="Calendar illustration" className="page-illustration" />

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { createGoogleAuthHandler } from './googleAuth.js';
+import { AccountLifecycleError } from './accountLifecycle.js';
 
 const secret = 'test-signing-key-not-for-production';
 const clientId = 'test-client.apps.googleusercontent.com';
 const profile = { sub: 'google-subject', email: 'person@gmail.com', email_verified: true, given_name: 'Person' };
 
-function fixture({ existing, claims = profile, configured = true, verificationFails = false } = {}) {
+function fixture({ existing, claims = profile, configured = true, verificationFails = false, resolveAccountLogin } = {}) {
   const saved = [];
   const verification = [];
   class User {
@@ -26,6 +27,7 @@ function fixture({ existing, claims = profile, configured = true, verificationFa
     userModel: User,
     clientId: configured ? clientId : '',
     jwtSecret: secret,
+    resolveAccountLogin,
     googleClient: {
       async verifyIdToken(options) {
         verification.push(options);
@@ -97,4 +99,30 @@ test('returning Google accounts use the stable Google subject, not a mutable ema
   assert.equal((await result.invoke({ credential: 'token' })).statusCode, 200);
   assert.equal(existing.email, 'updated@example.com');
   assert.equal(result.saved.length, 1);
+});
+
+test('Google recovery issues a fresh versioned token and acknowledgement', async () => {
+  const existing = { _id: 'existing-id', username: 'original', email: profile.email, googleId: profile.sub, sessionVersion: 2 };
+  const result = fixture({
+    existing,
+    resolveAccountLogin: async id => {
+      assert.equal(id, existing._id);
+      return { user: existing, restored: true };
+    },
+  });
+  const response = await result.invoke({ credential: 'token' });
+  assert.equal(response.statusCode, 200);
+  assert.match(response.data.message, /cancelled/);
+  assert.equal(jwt.verify(response.data.token, secret).sessionVersion, 2);
+});
+
+test('Google sign-in cannot restore an expired account or issue a token', async () => {
+  const existing = { _id: 'existing-id', username: 'original', email: profile.email, googleId: profile.sub };
+  const result = fixture({
+    existing,
+    resolveAccountLogin: async () => { throw new AccountLifecycleError('Recovery period has ended.', 410); },
+  });
+  const response = await result.invoke({ credential: 'token' });
+  assert.equal(response.statusCode, 410);
+  assert.equal(response.data.token, undefined);
 });
